@@ -1,0 +1,10 @@
+# build output
+*.o
+*.a
+*.elf
+EBOOT.PBP
+# generated from the Makefile (title, MEMSIZE) on every clean build
+Bookr/PARAM.SFO
+# experimental, not used by the build yet
+Bookr/jbig2dec/
+.DS_Store

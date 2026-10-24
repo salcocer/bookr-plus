@@ -17,7 +17,7 @@ INCS = -I${srcdir} -I${configdir}
 FLAGS = ${DEFS} ${INCS} ${OPTS} ${JPEG_CFLAGS} ${THREAD_CFLAGS}
 LIBS=  ${JPEG_LIBS} ${THREAD_LIBS} -lm 
 CFLAGS = ${FLAGS}   
-CXXFLAGS =  ${FLAGS} ${CXXPICFLAGS} ${CXXRPOFLAGS}   
+CXXFLAGS =  ${FLAGS} ${CXXPICFLAGS} ${CXXRPOFLAGS} -std=gnu++98 -fpermissive -include stddef.h
 
 PSPSDK=$(shell psp-config --pspsdk-path)
 PSPDIR=$(shell psp-config --psp-prefix)

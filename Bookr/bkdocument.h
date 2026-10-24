@@ -126,6 +126,18 @@ class BKDocument : public BKLayer {
 	virtual int setZoomToFitWidth() = 0;
 	virtual int setZoomToFitHeight() = 0;
 
+	// Fine zoom - documents that support it grow or shrink by a few screen
+	// pixels per step while a zoom button is held, and render once it is
+	// released.
+	virtual bool hasFineZoom() { return false; }
+	virtual int fineZoom(int pixels) { return 0; }
+	virtual int finishFineZoom() { return 0; }
+
+	// Trim margins - hide the white space at the left and right of each page
+	virtual bool hasTrimMargins() { return false; }
+	virtual bool getTrimMargins() { return false; }
+	virtual int setTrimMargins(bool on) { return 0; }
+
 	// Analog pad paning - can be ignored
 	virtual int pan(int, int) = 0;
 

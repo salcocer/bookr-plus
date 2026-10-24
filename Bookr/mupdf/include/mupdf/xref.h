@@ -56,6 +56,7 @@ fz_error *pdf_updateobject(pdf_xref *, int oid, int gen, fz_obj *obj);
 fz_error *pdf_updatestream(pdf_xref *, int oid, int gen, fz_buffer *stm);
 
 fz_error *pdf_cacheobject(pdf_xref *, int oid, int gen);
+fz_error *pdf_uncacheobject(pdf_xref *, int oid, int gen);
 fz_error *pdf_loadobject(fz_obj **objp, pdf_xref *, int oid, int gen);
 fz_error *pdf_loadindirect(fz_obj **objp, pdf_xref *, fz_obj *ref);
 fz_error *pdf_resolve(fz_obj **reforobj, pdf_xref *);

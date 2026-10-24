@@ -162,6 +162,7 @@ using namespace std;
 #define FZ_PSM_T8               (5) /* Texture */
 
 #ifdef PSP
+#include <stdio.h> // declare the real printf before it is redirected below
 #include <pspdebug.h>
 #define FZ_DEBUG_SCREEN_INIT pspDebugScreenInit();
 #define FZ_DEBUG_SCREEN_SET00 pspDebugScreenSetXY(0,0);

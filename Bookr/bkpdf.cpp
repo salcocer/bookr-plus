@@ -51,6 +51,21 @@ static const float zoomLevels[] = { 0.25f, 0.5f, 0.75f, 0.90f, 1.0f, 1.1f, 1.2f,
 
 static const float rotateLevels[] = { 0.0f, 90.0f, 180.0f, 270.0f };
 
+// D-pad pans this many screen pixels per step; holding it repeats every frame.
+static const int panStep = 5;
+// The analog stick pans from 1 pixel per frame just outside the dead zone up
+// to analogMaxStep pixels per frame at full tilt.
+static const int analogDeadZone = 32;
+static const int analogMaxStep = 10;
+
+static int analogStep(int v) {
+	int a = v < 0 ? -v : v;
+	if (a < analogDeadZone)
+		return 0;
+	int s = 1 + (a - analogDeadZone) * (analogMaxStep - 1) / (128 - analogDeadZone);
+	return v < 0 ? -s : s;
+}
+
 // singleton
 static unsigned int* bounceBuffer = NULL;
 //static unsigned int* backBuffer = NULL;
@@ -77,6 +92,14 @@ struct PDFContext {
 	int rotateLevel;
 
 	fz_renderer *rast;
+
+	/* trim margins: each page's media box is narrowed to its content */
+	bool trim;
+	float trimFit;			// zoom relative to the trimmed page's fit width
+	struct TrimEdges {
+		bool known;
+		float x0, x1;
+	} *trims;				// per page cache, allocated on first use
 };
 
 static int pdfInit() {
@@ -338,7 +361,7 @@ static void recalcScreenMediaBox(PDFContext* ctx) {
 	float h = ctx->page->mediabox.y1 - ctx->page->mediabox.y0;
 	float w = ctx->page->mediabox.x1 - ctx->page->mediabox.x0;
 	float x = ctx->page->mediabox.x0;
-	float y = ctx->page->mediabox.x0;
+	float y = ctx->page->mediabox.y0;
 	bbox.x0 = x;
 	bbox.y0 = y;
 	bbox.x1 = x;
@@ -452,6 +475,88 @@ static void optimizeNode(fz_node *node) {
 }
 
 static char lastPageError[1024];
+static float clampZoom(float z);
+
+// Finds where the page's real content starts and ends horizontally by
+// rendering it small, then narrows the media box to that range plus a safety
+// margin. Like a crop box that only removes the white sides. Results are
+// cached per page so each page is only analysed once.
+static void pdfTrimMargins(PDFContext* ctx) {
+	const int detectWidth = 400;	// render width used to find the edges
+	const int inkLevel = 215;		// pixels darker than this are content
+	const int minInk = 3;			// ink pixels a column needs, to skip specks
+
+	int pageCount = pdf_getpagecount(ctx->pages);
+	if (ctx->trims == NULL) {
+		ctx->trims = (PDFContext::TrimEdges*)calloc(pageCount, sizeof(PDFContext::TrimEdges));
+		if (ctx->trims == NULL)
+			return;
+	}
+	if (ctx->pageno < 1 || ctx->pageno > pageCount)
+		return;
+	PDFContext::TrimEdges& t = ctx->trims[ctx->pageno - 1];
+	fz_rect box = ctx->page->mediabox;
+
+	if (!t.known) {
+		t.known = true;
+		t.x0 = box.x0;
+		t.x1 = box.x1;
+		float w = box.x1 - box.x0;
+		if (w <= 0.0f || box.y1 - box.y0 <= 0.0f)
+			return;
+		float s = detectWidth / w;
+		fz_matrix ctm = fz_identity();
+		ctm = fz_concat(ctm, fz_translate(-box.x0, -box.y1));
+		ctm = fz_concat(ctm, fz_scale(s, -s));
+		fz_irect ir = fz_roundrect(fz_transformaabb(ctm, box));
+		fz_pixmap* pix = NULL;
+		fz_error* error = fz_rendertree(&pix, ctx->rast, ctx->page->tree, ctm, ir, 1);
+		if (error) {
+			fz_droperror(error);
+			return;
+		}
+		int* ink = (int*)calloc(pix->w, sizeof(int));
+		if (ink != NULL) {
+			// samples are alpha, red, green, blue
+			fz_sample* p = pix->samples;
+			for (int y = 0; y < pix->h; ++y) {
+				for (int x = 0; x < pix->w; ++x, p += pix->n) {
+					int m = p[1];
+					if (p[2] < m)
+						m = p[2];
+					if (p[3] < m)
+						m = p[3];
+					if (m < inkLevel)
+						++ink[x];
+				}
+			}
+			int l = 0;
+			while (l < pix->w && ink[l] < minInk)
+				++l;
+			int r = pix->w - 1;
+			while (r >= l && ink[r] < minInk)
+				--r;
+			if (l <= r) {			// blank pages are left alone
+				int margin = pix->w * 15 / 1000;
+				l -= margin;
+				r += margin;
+				if (l < 0)
+					l = 0;
+				if (r > pix->w - 1)
+					r = pix->w - 1;
+				t.x0 = box.x0 + l / s;
+				t.x1 = box.x0 + (r + 1) / s;
+				if (t.x1 > box.x1)
+					t.x1 = box.x1;
+			}
+			free(ink);
+		}
+		fz_droppixmap(pix);
+	}
+	ctx->page->mediabox.x0 = t.x0;
+	ctx->page->mediabox.x1 = t.x1;
+}
+
 static int pdfLoadPage(PDFContext* ctx) {
 	if (fullPageBuffer != NULL) {
 		fz_droppixmap(fullPageBuffer);
@@ -503,13 +608,24 @@ static int pdfLoadPage(PDFContext* ctx) {
 	//fz_debugtree(ctx->page->tree);
 
 	recalcScreenMediaBox(ctx);
+	if (ctx->trim) {
+		// keep the zoom relative to the trimmed width, so every page's
+		// content fills the screen the same way
+		pdfTrimMargins(ctx);
+		recalcScreenMediaBox(ctx);
+		float w = fabs(screenMediaBox.x1 - screenMediaBox.x0) / ctx->zoom;
+		if (ctx->trimFit > 0.0f && w > 0.0f) {
+			ctx->zoom = clampZoom(ctx->trimFit * 480.0f / w);
+			recalcScreenMediaBox(ctx);
+		}
+	}
 	if (BKUser::options.pdfFastScroll) {
 		pdfRenderFullPage(ctx);
 	}
 	return 0;
 }
 
-BKPDF::BKPDF(string& f) : ctx(0), fileName(f), panX(0), panY(0), loadNewPage(false), pageError(false) {
+BKPDF::BKPDF(string& f) : ctx(0), fileName(f), panX(0), panY(0), loadNewPage(false), pageError(false), pendingZoom(0.0f) {
 }
 
 static BKPDF* singleton = 0;
@@ -681,6 +797,10 @@ BKPDF* BKPDF::create(string& file) {
 }
 
 static void pdfClose(PDFContext* ctx) {
+	if (ctx->trims)
+		free(ctx->trims);
+	ctx->trims = 0;
+
 	if (ctx->page)
 		pdf_droppage(ctx->page);
 	ctx->page = 0;
@@ -753,24 +873,46 @@ int BKPDF::getCurrentZoomLevel() {
 	return ctx->zoomLevel;
 }
 
-int BKPDF::setZoomLevel(int z) {
-	if (z == ctx->zoomLevel)
-		return 0;
+// Fast images keeps a full page in memory, so it is limited to 2x.
+static float clampZoom(float z) {
+	float lo = zoomLevels[0];
+	float hi = BKUser::options.pdfFastScroll ? 2.0f : zoomLevels[sizeof(zoomLevels)/sizeof(float) - 1];
+	if (z < lo)
+		return lo;
+	if (z > hi)
+		return hi;
+	return z;
+}
+
+// Index of the zoom level closest to z, so the toolbar's zoom in/out steps
+// continue from wherever fine zoom left off.
+static int nearestZoomLevel(float z) {
 	int n = sizeof(zoomLevels)/sizeof(float);
-	ctx->zoomLevel = z;
-
-	if (ctx->zoomLevel < 0)
-		ctx->zoomLevel = 0;
-	if (ctx->zoomLevel >= n)
-		ctx->zoomLevel = n - 1;
-	if (BKUser::options.pdfFastScroll && ctx->zoomLevel > 14) {
-		ctx->zoomLevel = 14;
-		ctx->zoom = 2.0f;
+	if (BKUser::options.pdfFastScroll && n > 15)
+		n = 15;
+	int best = 0;
+	for (int i = 1; i < n; ++i) {
+		if (fabs(zoomLevels[i] - z) < fabs(zoomLevels[best] - z))
+			best = i;
 	}
+	return best;
+}
 
-	ctx->zoom = zoomLevels[ctx->zoomLevel];
-	float nx = float(panX)*ctx->zoom;
-	float ny = float(panY)*ctx->zoom;
+// Sets an absolute zoom, keeping the point at the centre of the screen in place.
+int BKPDF::applyZoom(float z) {
+	z = clampZoom(z);
+	ctx->zoomLevel = nearestZoomLevel(z);
+	if (z == ctx->zoom)
+		return 0;
+	float ratio = z / ctx->zoom;
+	float nx = (float(panX) + 240.0f) * ratio - 240.0f;
+	float ny = (float(panY) + 136.0f) * ratio - 136.0f;
+	ctx->zoom = z;
+	if (!pageError) {
+		recalcScreenMediaBox(ctx);
+		if (ctx->trim)
+			ctx->trimFit = fabs(screenMediaBox.x1 - screenMediaBox.x0) / 480.0f;
+	}
 	clipCoords(nx, ny);
 	panX = int(nx);
 	panY = int(ny);
@@ -783,6 +925,70 @@ int BKPDF::setZoomLevel(int z) {
 	}
 	redrawBuffer();
 	return BK_CMD_MARK_DIRTY;
+}
+
+int BKPDF::setZoomLevel(int z) {
+	if (z == ctx->zoomLevel)
+		return 0;
+	int n = sizeof(zoomLevels)/sizeof(float);
+	if (z < 0)
+		z = 0;
+	if (z >= n)
+		z = n - 1;
+	return applyZoom(zoomLevels[z]);
+}
+
+bool BKPDF::hasFineZoom() {
+	return true;
+}
+
+// Grows or shrinks the pending zoom so the page width on screen changes by
+// the given number of pixels. Only the banner updates until finishFineZoom,
+// so holding the button does not re-render the page on every step.
+int BKPDF::fineZoom(int pixels) {
+	if (pageError)
+		return 0;
+	if (pendingZoom <= 0.0f)
+		pendingZoom = ctx->zoom;
+	float w = fabs(screenMediaBox.x1 - screenMediaBox.x0) * pendingZoom / ctx->zoom;
+	if (w < 1.0f)
+		w = 1.0f;
+	float z = clampZoom(pendingZoom * (w + pixels) / w);
+	if (z == pendingZoom)
+		return 0;
+	pendingZoom = z;
+	char t[256];
+	snprintf(t, 256, "Zoom %2.3gx", pendingZoom);
+	setBanner(t);
+	return BK_CMD_MARK_DIRTY;
+}
+
+bool BKPDF::hasTrimMargins() {
+	return true;
+}
+
+bool BKPDF::getTrimMargins() {
+	return ctx->trim;
+}
+
+// Turning trim on starts at the trimmed page's fit width. The page is
+// reloaded either way, which narrows or restores its media box.
+int BKPDF::setTrimMargins(bool on) {
+	if (on == ctx->trim)
+		return 0;
+	ctx->trim = on;
+	ctx->trimFit = on ? 1.0f : 0.0f;
+	panX = 0;
+	loadNewPage = true;
+	return BK_CMD_MARK_DIRTY;
+}
+
+int BKPDF::finishFineZoom() {
+	if (pendingZoom <= 0.0f)
+		return 0;
+	float z = pendingZoom;
+	pendingZoom = 0.0f;
+	return applyZoom(z);
 }
 
 
@@ -794,42 +1000,14 @@ int BKPDF::setZoomToFitWidth() {
 	float nw = fabs(screenMediaBox.x1 - screenMediaBox.x0)/ctx->zoom;		// width at 1.0 zoom
 	if (nw == 0.0f)
 		nw = 1.0f;
-	ctx->zoom = 480.0f/nw;
-	float nx = float(panX)*ctx->zoom;
-	float ny = float(panY)*ctx->zoom;
-	clipCoords(nx, ny);
-	panX = int(nx);
-	panY = int(ny);
-	char t[256];
-	snprintf(t, 256, "Zoom %2.3gx", ctx->zoom);
-	setBanner(t);
-	if (BKUser::options.pdfFastScroll) {
-		loadNewPage = true;
-		return BK_CMD_MARK_DIRTY;
-	}
-	redrawBuffer();
-	return BK_CMD_MARK_DIRTY;
+	return applyZoom(480.0f/nw);
 }
 
 int BKPDF::setZoomToFitHeight() {
 	float nh = fabs(screenMediaBox.y1 - screenMediaBox.y0)/ctx->zoom;		// height at 1.0 zoom
 	if (nh == 0.0f)
 		nh = 1.0f;
-	ctx->zoom = 272.0f/nh;
-	float nx = float(panX)*ctx->zoom;
-	float ny = float(panY)*ctx->zoom;
-	clipCoords(nx, ny);
-	panX = int(nx);
-	panY = int(ny);
-	char t[256];
-	snprintf(t, 256, "Zoom %2.3gx", ctx->zoom);
-	setBanner(t);
-	if (BKUser::options.pdfFastScroll) {
-		loadNewPage = true;
-		return BK_CMD_MARK_DIRTY;
-	}
-	redrawBuffer();
-	return BK_CMD_MARK_DIRTY;
+	return applyZoom(272.0f/nh);
 }
 
 bool BKPDF::isBookmarkable() {
@@ -839,6 +1017,9 @@ bool BKPDF::isBookmarkable() {
 void BKPDF::getBookmarkPosition(map<string, int>& m) {
 	m["page"] = ctx->pageno;
 	m["zoom"] = ctx->zoomLevel;
+	m["zoomPermille"] = int(ctx->zoom * 1000.0f + 0.5f);
+	m["trim"] = ctx->trim ? 1 : 0;
+	m["trimFitPermille"] = int(ctx->trimFit * 1000.0f + 0.5f);
 	m["panX"] = panX;
 	m["panY"] = panY;
 	m["rotation"] = ctx->rotateLevel;
@@ -846,7 +1027,18 @@ void BKPDF::getBookmarkPosition(map<string, int>& m) {
 
 int BKPDF::setBookmarkPosition(map<string, int>& m) {
 	setCurrentPage(m["page"]);
-	setZoomLevel(m["zoom"]);
+	map<string, int>::iterator zp = m.find("zoomPermille");
+	if (zp != m.end() && zp->second > 0)
+		applyZoom(float(zp->second) / 1000.0f);
+	else
+		setZoomLevel(m["zoom"]);
+	map<string, int>::iterator tr = m.find("trim");
+	if (tr != m.end() && tr->second) {
+		ctx->trim = true;
+		map<string, int>::iterator tf = m.find("trimFitPermille");
+		ctx->trimFit = (tf != m.end() && tf->second > 0) ? float(tf->second) / 1000.0f : 1.0f;
+		loadNewPage = true;
+	}
 	setRotation(m["rotation"]);
 	panX = m["panX"];
 	panY = m["panY"];
@@ -877,7 +1069,10 @@ int BKPDF::setCurrentPage(int position) {
 		char t[256];
 		snprintf(t, 256, "Loading page %d", ctx->pageno);
 		setBanner(t);
-		panY = 0;
+		// with trim margins every page is framed alike, so keep the view
+		// where it was; otherwise start the new page at the top
+		if (!ctx->trim)
+			panY = 0;
 		return BK_CMD_MARK_DIRTY;
 	}
 	return 0;
@@ -944,31 +1139,27 @@ int BKPDF::prePan(int x, int y) {
 }
 
 int BKPDF::pan(int x, int y) {
-	if (x > -32 && x < 32)
-		x = 0;
-	if (y > -32 && y < 32)
-		y = 0;
+	x = analogStep(x);
+	y = analogStep(y);
 	if (x == 0 && y == 0)
 		return 0;
-	x >>= 2;
-	y >>= 2;
 	return prePan(x, y);
 }
 
 int BKPDF::screenUp() {
-	return prePan(0, -250);
+	return prePan(0, -panStep);
 }
 
 int BKPDF::screenDown() {
-	return prePan(0, 250);
+	return prePan(0, panStep);
 }
 
 int BKPDF::screenLeft() {
-	return prePan(-460, 0);
+	return prePan(-panStep, 0);
 }
 
 int BKPDF::screenRight() {
-	return prePan(460, 0);
+	return prePan(panStep, 0);
 }
 
 void BKPDF::renderContent() {
@@ -1216,6 +1407,14 @@ int BKPDF::updateContent() {
 
 	if (loadNewPage) {
 		pageError = pdfLoadPage(ctx) != 0;
+		if (!pageError) {
+			// the page size can change with trim margins
+			float nx = float(panX);
+			float ny = float(panY);
+			clipCoords(nx, ny);
+			panX = int(nx);
+			panY = int(ny);
+		}
 		redrawBuffer();
 		loadNewPage = false;
 		char t[256];

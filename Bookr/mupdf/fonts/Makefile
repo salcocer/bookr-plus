@@ -5,8 +5,8 @@ OBJS+=NimbusMonL-BoldObli.o  NimbusRomNo9L-MediItal.o  NimbusSanL-BoldItal.o    
 OBJS+=NimbusMonL-Regu.o      NimbusRomNo9L-Regu.o      NimbusSanL-Regu.o
 
 INCDIR=../include
-CFLAGS=-G0 -Wall -O2 -I/usr/local/pspdev/psp/include/freetype2
-CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I/usr/local/pspdev/psp/include/freetype2
+CFLAGS=-G0 -Wall -O2 -I$(shell psp-config --psp-prefix)/include/freetype2
+CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I$(shell psp-config --psp-prefix)/include/freetype2
 ASFLAGS=$(CFLAGS)
 
 LIBDIR=

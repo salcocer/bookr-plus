@@ -59,6 +59,18 @@ public:
 	 */
 	static FZFont* createFromFile(char* fileName, int fontSize, bool autohint);
 	static FZFont* createFromMemory(unsigned char* buffer, int bufferSize, int fontSize, bool autohint);
+
+	/**
+	 * Unicode code point drawn in each of the 256 glyph slots. Slots follow
+	 * Windows-1252: Latin-1, plus dashes, curly quotes, ellipsis and euro
+	 * in 0x80-0x9F.
+	 */
+	static unsigned int slotToUnicode(int slot);
+
+	/**
+	 * Glyph slot for a Unicode code point, or -1 if no slot holds it.
+	 */
+	static int unicodeToSlot(unsigned int cp);
 };
 
 #endif

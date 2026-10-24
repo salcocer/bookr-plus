@@ -161,8 +161,24 @@ int BKDocument::processEventsForView() {
 			return r;
 	}
 
+	// button handling - fine zoom, repeating while the button is held
+	if (isZoomable() && hasFineZoom()) {
+		const int step = 5;		// screen pixels per step
+		int zin = b[BKUser::controls.zoomIn];
+		int zout = b[BKUser::controls.zoomOut];
+		int r = 0;
+		if (zin == 1 || zin > 20)
+			r = fineZoom(step);
+		else if (zout == 1 || zout > 20)
+			r = fineZoom(-step);
+		else if (zin == 0 && zout == 0)
+			r = finishFineZoom();
+		if (r != 0)
+			return r;
+	}
+
 	// button handling - zoom
-	if (isZoomable()) {
+	if (isZoomable() && !hasFineZoom()) {
 		vector<ZoomLevel> zooms;
 		getZoomLevels(zooms);
 		int z = getCurrentZoomLevel();
@@ -363,6 +379,16 @@ void BKDocument::buildToolbarMenus() {
 		i.iconW = 18;
 		i.iconH = 26;
 		toolbarMenus[2].push_back(i);
+
+		if (hasTrimMargins()) {
+			i.label = getTrimMargins() ? "Trim margins: On" : "Trim margins: Off";
+			i.circleLabel = getTrimMargins() ? "Turn off" : "Turn on";
+			i.iconX = 95;
+			i.iconY = 53;
+			i.iconW = 18;
+			i.iconH = 26;
+			toolbarMenus[2].push_back(i);
+		}
 	} else {
 		ToolbarItem i;
 		i.label = "No zoom support";
@@ -530,6 +556,13 @@ int BKDocument::processEventsForToolbar() {
 			int z = getCurrentZoomLevel();
 			z--;
 			int r = setZoomLevel(z);
+			if (r != 0)
+				return r;
+		}
+		// trim margins, the item after zoom in
+		if (toolbarSelMenu == 2 && toolbarSelMenuItem == zi + 1 && isZoomable() && hasTrimMargins()) {
+			int r = setTrimMargins(!getTrimMargins());
+			buildToolbarMenus();
 			if (r != 0)
 				return r;
 		}

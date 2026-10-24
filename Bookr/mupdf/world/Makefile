@@ -3,8 +3,8 @@ OBJS:=node_toxml.o node_misc1.o node_misc2.o node_optimize.o node_path.o node_te
 OBJS+=res_colorspace.o res_font.o res_image.o res_shade.o
 
 INCDIR=../include
-CFLAGS=-G0 -Wall -O2 -I/usr/local/pspdev/psp/include/freetype2
-CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I/usr/local/pspdev/psp/include/freetype2
+CFLAGS=-G0 -Wall -O2 -I$(shell psp-config --psp-prefix)/include/freetype2
+CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I$(shell psp-config --psp-prefix)/include/freetype2
 ASFLAGS=$(CFLAGS)
 
 LIBDIR=

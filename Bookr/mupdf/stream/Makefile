@@ -5,8 +5,8 @@ OBJS+=filt_a85d.o filt_a85e.o filt_ahxd.o filt_ahxe.o filt_dctd.o filt_dcte.o  f
 OBJS+=filt_faxe.o filt_faxetab.o filt_flate.o filt_lzwd.o filt_lzwe.o filt_predict.o filt_rld.o filt_rle.o
 
 INCDIR=../include
-CFLAGS=-G0 -Wall -O2 -I/usr/local/pspdev/psp/include/freetype2
-CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I/usr/local/pspdev/psp/include/freetype2
+CFLAGS=-G0 -Wall -O2 -I$(shell psp-config --psp-prefix)/include/freetype2
+CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I$(shell psp-config --psp-prefix)/include/freetype2
 ASFLAGS=$(CFLAGS)
 
 LIBDIR=

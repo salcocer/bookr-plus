@@ -39,6 +39,8 @@ class BKPDF : public BKDocument {
 	int panY;
 	bool loadNewPage;
 	bool pageError;
+	float pendingZoom;
+	int applyZoom(float z);
 	void panBuffer(int nx, int ny);
 	void clipCoords(float& nx, float& ny);
 	void redrawBuffer();
@@ -71,6 +73,12 @@ class BKPDF : public BKDocument {
 	virtual bool hasZoomToFit();
 	virtual int setZoomToFitWidth();
 	virtual int setZoomToFitHeight();
+	virtual bool hasFineZoom();
+	virtual int fineZoom(int pixels);
+	virtual int finishFineZoom();
+	virtual bool hasTrimMargins();
+	virtual bool getTrimMargins();
+	virtual int setTrimMargins(bool on);
 
 	virtual int pan(int, int);
 

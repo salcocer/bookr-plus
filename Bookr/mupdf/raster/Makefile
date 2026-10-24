@@ -2,8 +2,8 @@ TARGET_LIB=libraster.a
 OBJS:=glyphcache.o pixmap.o porterduff.o meshdraw.o imagedraw.o imageunpack.o imagescale.o pathscan.o pathfill.o pathstroke.o render.o
 
 INCDIR=../include
-CFLAGS=-G0 -Wall -O2 -I/usr/local/pspdev/psp/include/freetype2
-CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I/usr/local/pspdev/psp/include/freetype2
+CFLAGS=-G0 -Wall -O2 -I$(shell psp-config --psp-prefix)/include/freetype2
+CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I$(shell psp-config --psp-prefix)/include/freetype2
 ASFLAGS=$(CFLAGS)
 
 LIBDIR=

@@ -8,24 +8,26 @@ OBJS+=fzrefcount.o fzinstreammem.o fzinstreamstd.o fzimage.o fzimagepng.o fztext
 OBJS+=tinystr.o tinyxmlerror.o tinyxml.o tinyxmlparser.o bkmemcpy.o
 OBJS+=res_uifont.o res_txtfont.o res_uitex.o res_logo.o res_uitex2.o
 OBJS+=chmlib/chm_lib.o chmlib/lzx.o
-OBJS+=vnconv\byteio.o vnconv\charset.o vnconv\data.o vnconv\error.o vnconv\pattern.o
-OBJS+=bkcachechooser.o vnconv\webviqrconv.o
+OBJS+=vnconv/byteio.o vnconv/charset.o vnconv/data.o vnconv/error.o vnconv/pattern.o
+OBJS+=bkcachechooser.o vnconv/webviqrconv.o
 OBJS+=pspchm.o
 
 INCDIR =
-CFLAGS = -Imupdf/include -Idjvu/libdjvupsp -G0 -Wall -O2 -Ic:/pspsdk/psp/include/freetype2
+CFLAGS = -Imupdf/include -Idjvu/libdjvupsp -G0 -Wall -O2 -Dstricmp=strcasecmp -Dstrnicmp=strncasecmp -I$(shell psp-config --psp-prefix)/include/freetype2
 #CFLAGS += -g
 #BUILD_PRX=1
-CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
+CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -std=gnu++98
 ASFLAGS = $(CFLAGS)
 
 LIBDIR =
 LDFLAGS =
-LIBS=-Lmupdf/libs -Ldjvu/libs -ldjvulibre -lmupdf -lraster -lworld -lfonts -lstream -lbase -lpspgum -lpspgu -lpsppower -lpsprtc -lpng -lz -ljpeg -lm -lfreetype -lstdc++ -lsupc++
+LIBS=-Lmupdf/libs -Ldjvu/libs -ldjvulibre -lmupdf -lraster -lworld -lfonts -lstream -lbase -lpspgum -lpspgu -lpsppower -lpsprtc -lpng -lz -ljpeg -lm -lfreetype -lbz2 -lstdc++ -lsupc++
 
 
 EXTRA_TARGETS = EBOOT.PBP
-PSP_EBOOT_TITLE = Book Reader V8.1
+PSP_EBOOT_TITLE = Bookr Plus
+# PSP-2000/3000: let the app use the extra 32 MB of RAM
+PSP_LARGE_MEMORY = 1
 
 PSPSDK=$(shell psp-config --pspsdk-path)
 #USE_PSPSDK_LIBC=1

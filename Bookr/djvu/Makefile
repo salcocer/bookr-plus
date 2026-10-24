@@ -1,4 +1,5 @@
 all:
+	@mkdir -p libs
 	@(cd libdjvupsp; make; cp libdjvulibre.a ../libs)
 
 

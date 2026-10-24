@@ -40,6 +40,30 @@ FZFont::~FZFont() {
 	metrics = 0;
 }
 
+// Windows-1252 code points for slots 0x80-0x9F (0 = unused slot)
+static const unsigned short cp1252High[32] = {
+	0x20AC, 0, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+	0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017D, 0,
+	0, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+	0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0, 0x017E, 0x0178
+};
+
+unsigned int FZFont::slotToUnicode(int slot) {
+	if (slot >= 0x80 && slot < 0xA0)
+		return cp1252High[slot - 0x80];
+	return slot;
+}
+
+int FZFont::unicodeToSlot(unsigned int cp) {
+	if (cp < 0x80 || (cp >= 0xA0 && cp < 0x100))
+		return cp;
+	for (int i = 0; i < 32; ++i) {
+		if (cp1252High[i] == cp)
+			return 0x80 + i;
+	}
+	return -1;
+}
+
 // based on http://gpwiki.org/index.php/OpenGL_Font_System
 
 FZFont* FZFont::createFromFile(char* fileName, int fontSize, bool autohint) {
@@ -105,7 +129,7 @@ FZFont* FZFont::createProto(FT_Library& library, FT_Face& face, int fontSize, bo
 		loadMode |= FT_LOAD_FORCE_AUTOHINT;
 	for (int i = 0; i < 256; ++i) {
 		// Look up the character in the font file.
-		int char_index = FT_Get_Char_Index(face, i);
+		int char_index = FT_Get_Char_Index(face, slotToUnicode(i));
 		if (i < 32)
 			char_index = 0;
 	
@@ -157,7 +181,7 @@ FZFont* FZFont::createProto(FT_Library& library, FT_Face& face, int fontSize, bo
 
 	// Drawing loop
 	for (int i = 0; i < 256; ++i) {
-		int char_index = FT_Get_Char_Index(face, i);
+		int char_index = FT_Get_Char_Index(face, slotToUnicode(i));
 		if (i < 32)
 			char_index = 0;
 		

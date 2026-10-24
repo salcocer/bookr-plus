@@ -2,8 +2,8 @@ TARGET_LIB=libbase.a
 OBJS=base_cleanname.o base_hash.o base_rect.o base_cpudep.o base_matrix.o base_rune.o util_getopt.o util_strsep.o base_error.o base_memory.o
 
 INCDIR=../include
-CFLAGS=-G0 -Wall -O2 -I/usr/local/pspdev/psp/include/freetype2
-CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I/usr/local/pspdev/psp/include/freetype2
+CFLAGS=-G0 -Wall -O2 -I$(shell psp-config --psp-prefix)/include/freetype2
+CXXFLAGS=$(CFLAGS) -fno-exceptions -fno-rtti -I$(shell psp-config --psp-prefix)/include/freetype2
 ASFLAGS=$(CFLAGS)
 
 LIBDIR=
