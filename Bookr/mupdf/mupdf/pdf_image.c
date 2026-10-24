@@ -219,6 +219,7 @@ fz_error * fakeImageTile(fz_image *img, fz_pixmap *tile) {
  * bk_pdf_fitsinmemory() below */
 static const int image_buffers_size_max = 32*1024*1024;
 static int image_buffers_size = 0;
+static int images_skipped = 0;
 
 /*
  * Bookr Plus: the original fixed 2 MB limit per image kept the PSP-1000 from
@@ -233,7 +234,7 @@ static int bk_pdf_fitsinmemory(int bytes)
 	void * volatile p;
 	if (bytes <= 0 || bytes > 64*1024*1024)
 		return 0;
-	p = malloc(bytes * 4 + 2*1024*1024);
+	p = malloc(bytes * 3 + 1024*1024);
 	if (!p)
 		return 0;
 	free(p);
@@ -241,6 +242,12 @@ static int bk_pdf_fitsinmemory(int bytes)
 }
 void bk_pdf_resetbufferssize() {
 	image_buffers_size = 0;
+	images_skipped = 0;
+}
+
+/* images replaced by a blank since the last reset, for lack of memory */
+int bk_pdf_skippedimages() {
+	return images_skipped;
 }
 
 int bk_pdf_overflowbuffers() {
@@ -486,6 +493,7 @@ pdf_loadimage(pdf_image **imgp, pdf_xref *xref, fz_obj *dict, fz_obj *ref)
 #ifndef PSP
 		printf("LI - %p - optimized out\n", img);
 #endif
+		images_skipped++;
 		if (img->samples)
 			fz_dropbuffer(img->samples);
 		if (img->mask)

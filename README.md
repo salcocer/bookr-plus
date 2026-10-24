@@ -100,12 +100,30 @@ decoded, and silently drew a blank grey square instead. That limit protected
 the PSP-1000, but it blanked every colour page of a scanned comic: an 800 ×
 1202 RGB page needs 2.8 MB, while the same page in grayscale needs 0.9 MB.
 
-Bookr Plus now loads an image whenever its samples, plus about four times that
-for rendering and 2 MB of headroom, fit in free memory at that moment
-(`bk_pdf_fitsinmemory()` in `mupdf/mupdf/pdf_image.c`). Colour pages show on
-the PSP-2000/3000, and on a PSP-1000 oversized images are still skipped rather
-than crashing. The per-page image total was raised from 8 MB to 32 MB as a
-sanity cap.
+Bookr Plus now loads an image whenever three times its decoded size (the
+samples, plus the tile and scaled copy drawn from them) and 1 MB of headroom
+fit in free memory at that moment (`bk_pdf_fitsinmemory()` in
+`mupdf/mupdf/pdf_image.c`). Colour pages now show on a PSP-3000, and
+on a PSP-1000 oversized images are still skipped rather than crashing. The
+per-page image total was raised from 8 MB to 32 MB as a sanity cap.
+
+The probe allocates and frees a block. Its pointer is `volatile`, because GCC
+otherwise removes an unused `malloc`/`free` pair, which silently turns the
+check into "always fits".
+
+### Memory diagnostics
+
+- **Toolbar memory counter:** the counter next to the clock and battery shows
+  **used/free** in MB (for example `8/36M`) instead of only kilobytes used.
+  "Free" is the largest block `malloc` can hand out, found by binary search,
+  so it shows whether the PSP-2000/3000 extra memory is active.
+- **No more silent blanks:** when an image is skipped for lack of memory, the
+  page banner says so, for example "Page 1 of 222 - not enough memory for 1
+  image", instead of showing an unexplained grey page.
+
+If the free number stays under about 15 MB on a PSP-2000/3000, the custom
+firmware is not granting the extra memory. On ARK-4 that is the `highmem`
+setting in `SETTINGS.TXT`.
 
 ### Bug fix
 

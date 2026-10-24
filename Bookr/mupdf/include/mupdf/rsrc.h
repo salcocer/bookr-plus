@@ -142,6 +142,7 @@ fz_error *pdf_loadtile(fz_image *image, fz_pixmap *tile);
 // ccm
 void bk_pdf_resetbufferssize();
 int bk_pdf_overflowbuffers();
+int bk_pdf_skippedimages();
 
 /*
  * CMap

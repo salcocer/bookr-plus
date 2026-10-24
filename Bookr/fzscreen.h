@@ -273,6 +273,7 @@ public:
 	static void getTime(int &h, int &m);
 	static int getBattery();
 	static int getUsedMemory();
+	static int getFreeMemory();
 
 	static char* browserTextSizes[];
 	static char* browserDisplayModes[];

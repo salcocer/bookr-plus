@@ -440,3 +440,20 @@ int FZScreen::getUsedMemory() {
 	//return mi.arena;
 }
 
+// Largest block malloc can hand out right now, found by binary search to
+// within 256 KB. Shows whether the PSP-2000/3000 extra memory is active.
+int FZScreen::getFreeMemory() {
+	int lo = 0, hi = 64*1024*1024;
+	while (hi - lo > 256*1024) {
+		int mid = lo + (hi - lo) / 2;
+		void * volatile p = malloc(mid);	// volatile so the probe is kept
+		if (p) {
+			free(p);
+			lo = mid;
+		} else {
+			hi = mid;
+		}
+	}
+	return lo;
+}
+

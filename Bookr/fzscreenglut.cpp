@@ -616,5 +616,9 @@ int FZScreen::getUsedMemory() {
 	//return mi.arena;
 #endif
 }
+
+int FZScreen::getFreeMemory() {
+	return 0;
+}
 	
 

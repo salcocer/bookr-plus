@@ -1418,7 +1418,12 @@ int BKPDF::updateContent() {
 		redrawBuffer();
 		loadNewPage = false;
 		char t[256];
-		snprintf(t, 256, "Page %d of %d", ctx->pageno, pdf_getpagecount(ctx->pages));
+		int skipped = bk_pdf_skippedimages();
+		if (skipped > 0)
+			snprintf(t, 256, "Page %d of %d - not enough memory for %d image%s", ctx->pageno,
+				pdf_getpagecount(ctx->pages), skipped, skipped == 1 ? "" : "s");
+		else
+			snprintf(t, 256, "Page %d of %d", ctx->pageno, pdf_getpagecount(ctx->pages));
 		setBanner(t);
 		return BK_CMD_MARK_DIRTY;
 	}

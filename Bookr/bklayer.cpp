@@ -538,7 +538,8 @@ void BKLayer::drawClockAndBattery(string& extra) {
 	snprintf(t2, 20, "%d%%", b);
 	char t3[20];
 //	snprintf(t3, 20, "%.1fM", ((float)(mem)) / (1024.0f*1024.0f));
-	snprintf(t3, 20, "%dK", mem / 1024);
+	// used / largest free block, in MB
+	snprintf(t3, 20, "%d/%dM", mem / (1024*1024), FZScreen::getFreeMemory() / (1024*1024));
 	char t4[20];
 	snprintf(t4, 20, "%dMHz", speed);
 	drawText(t1, fontSmall, 425, 224);
