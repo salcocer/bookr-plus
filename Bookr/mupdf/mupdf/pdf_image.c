@@ -215,8 +215,30 @@ fz_error * fakeImageTile(fz_image *img, fz_pixmap *tile) {
 	return 0;
 }
 
-static const int image_buffers_size_max = 8*1024*1024;
+/* Bookr Plus: sanity cap per page; whether an image loads is decided by
+ * bk_pdf_fitsinmemory() below */
+static const int image_buffers_size_max = 32*1024*1024;
 static int image_buffers_size = 0;
+
+/*
+ * Bookr Plus: the original fixed 2 MB limit per image kept the PSP-1000 from
+ * running out of memory, but it blanked colour pages on the PSP-2000/3000,
+ * which give Bookr far more memory. Instead, load an image when its decoded
+ * samples, plus room to render them, fit in free memory right now.
+ */
+static int bk_pdf_fitsinmemory(int bytes)
+{
+	/* volatile, or the compiler drops the unused malloc/free pair and the
+	 * check always succeeds */
+	void * volatile p;
+	if (bytes <= 0 || bytes > 64*1024*1024)
+		return 0;
+	p = malloc(bytes * 4 + 2*1024*1024);
+	if (!p)
+		return 0;
+	free(p);
+	return 1;
+}
 void bk_pdf_resetbufferssize() {
 	image_buffers_size = 0;
 }
@@ -402,9 +424,9 @@ pdf_loadimage(pdf_image **imgp, pdf_xref *xref, fz_obj *dict, fz_obj *ref)
 		stride = (w * (n + a) * bpc + 7) / 8;
 
 	// ccm
-	// do not load images larger than 2MB uncompressed
+	// do not load images that would not fit in memory
 	int early_reject = 0;
-	if (h * stride <= 2*1024*1024) {
+	if (bk_pdf_fitsinmemory(h * stride)) {
 		error = pdf_loadstream(&img->samples, xref, fz_tonum(ref), fz_togen(ref));
 		if (error)
 		{

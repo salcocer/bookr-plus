@@ -93,6 +93,20 @@ left and right of every page:
   framing you set with the arrows and zoom carries over to the next page.
 - The trim setting and zoom are saved with the book's last view.
 
+### Colour pages in image PDFs
+
+Bookr's MuPDF refused to load any image needing more than 2 MB once
+decoded, and silently drew a blank grey square instead. That limit protected
+the PSP-1000, but it blanked every colour page of a scanned comic: an 800 ×
+1202 RGB page needs 2.8 MB, while the same page in grayscale needs 0.9 MB.
+
+Bookr Plus now loads an image whenever its samples, plus about four times that
+for rendering and 2 MB of headroom, fit in free memory at that moment
+(`bk_pdf_fitsinmemory()` in `mupdf/mupdf/pdf_image.c`). Colour pages show on
+the PSP-2000/3000, and on a PSP-1000 oversized images are still skipped rather
+than crashing. The per-page image total was raised from 8 MB to 32 MB as a
+sanity cap.
+
 ### Bug fix
 
 `recalcScreenMediaBox()` used the page's `x0` where it meant `y0`. It made
