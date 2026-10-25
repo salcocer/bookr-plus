@@ -60,8 +60,8 @@ static const int panStep = 5;
 // square of the tilt: a light push moves analogMinSpeed for fine positioning,
 // full tilt moves analogMaxSpeed.
 static const int analogDeadZone = 32;
-static const float analogMinSpeed = 30.0f;
-static const float analogMaxSpeed = 1200.0f;
+static const float analogMinSpeed = 15.0f;
+static const float analogMaxSpeed = 800.0f;
 // longest time one step may cover, so a stall can't cause a big jump
 static const float analogMaxFrame = 0.15f;
 

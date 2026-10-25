@@ -62,7 +62,7 @@ Western European languages.
 | Control | Bookr V8.1 | Bookr Plus |
 | --- | --- | --- |
 | D-pad | Jumps 250 px (up/down) or 460 px (left/right) | Moves **5 px** per press; hold to scroll smoothly |
-| Analog stick | Up to 32 px per frame, slowed down by every page redraw | Timed in **pixels per second**: 30 px/s (light push) to 1200 px/s (full tilt), on a curve that keeps small pushes precise. Same speed even while a slow page redraws |
+| Analog stick | Up to 32 px per frame, slowed down by every page redraw | Timed in **pixels per second**: 15 px/s (light push) to 800 px/s (full tilt), on a curve that keeps small pushes precise. Same speed even while a slow page redraws |
 | L / R zoom | Fixed steps (1.0, 1.1, … 2.0, 2.25, 2.5 …) | Page width grows or shrinks by **5 px** per press; hold to keep zooming |
 | While zooming | Page re-rendered after every step | Only the "Zoom 1.27x" label updates; the page renders **once, on release** |
 | After zooming | View jumped sideways (pan was multiplied by the absolute zoom) | View **stays centred** on the same spot |
