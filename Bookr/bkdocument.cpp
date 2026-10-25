@@ -389,6 +389,16 @@ void BKDocument::buildToolbarMenus() {
 			i.iconH = 26;
 			toolbarMenus[2].push_back(i);
 		}
+
+		if (hasComicMode()) {
+			i.label = getComicMode() ? "Comic mode: On" : "Comic mode: Off";
+			i.circleLabel = getComicMode() ? "Turn off" : "Turn on";
+			i.iconX = 57;
+			i.iconY = 79;
+			i.iconW = 17;
+			i.iconH = 26;
+			toolbarMenus[2].push_back(i);
+		}
 	} else {
 		ToolbarItem i;
 		i.label = "No zoom support";
@@ -566,6 +576,14 @@ int BKDocument::processEventsForToolbar() {
 			if (r != 0)
 				return r;
 		}
+		// comic mode, the item after trim margins
+		int ci = hasTrimMargins() ? zi + 2 : zi + 1;
+		if (toolbarSelMenu == 2 && toolbarSelMenuItem == ci && isZoomable() && hasComicMode()) {
+			int r = setComicMode(!getComicMode());
+			buildToolbarMenus();
+			if (r != 0)
+				return r;
+		}
 
 		// rotate cw
 		if (toolbarSelMenu == 3 && toolbarSelMenuItem == 0 && isRotable()) {
@@ -718,7 +736,16 @@ void BKDocument::render() {
 	FZScreen::ambientColor(0xffcccccc);
 	int tw = textW((char*)it.circleLabel.c_str(), fontBig);
 	if (it.circleLabel.size() > 0) {
-		drawImage(480 - tw - 65, 248, BK_IMG_CROSS_XSIZE, BK_IMG_CROSS_YSIZE, BK_IMG_CROSS_X, BK_IMG_CROSS_Y);
+		// the icon of whichever button selects, as in the menus
+		switch (BKUser::controls.select) {
+		case FZ_REPS_CROSS:
+			drawImage(480 - tw - 65, 248, BK_IMG_CROSS_XSIZE, BK_IMG_CROSS_YSIZE, BK_IMG_CROSS_X, BK_IMG_CROSS_Y);
+			break;
+		case FZ_REPS_CIRCLE:
+		default:
+			drawImage(480 - tw - 65, 248, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y);
+			break;
+		}
 	}
 	if (it.triangleLabel.size() > 0) {
 		drawImage(37, 248, 20, 18, BK_IMG_TRIANGLE_X, BK_IMG_TRIANGLE_Y);

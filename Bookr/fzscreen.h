@@ -271,6 +271,9 @@ public:
 	static int getSpeed();
 
 	static void getTime(int &h, int &m);
+	// microseconds from a free-running clock, for frame timing; wraps around,
+	// so only use differences between two readings
+	static unsigned int getMicros();
 	static int getBattery();
 	static int getUsedMemory();
 	static int getFreeMemory();

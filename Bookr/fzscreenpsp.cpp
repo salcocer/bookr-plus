@@ -419,6 +419,10 @@ int FZScreen::getSpeed() {
 	return scePowerGetCpuClockFrequency();
 }
 
+unsigned int FZScreen::getMicros() {
+	return sceKernelGetSystemTimeLow();
+}
+
 void FZScreen::getTime(int &h, int &m) {
 	ScePspDateTime time;
 	if (sceRtcGetCurrentClockLocalTime(&time) >= 0) {

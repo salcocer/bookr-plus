@@ -3,7 +3,8 @@
 A PDF and e-book reader for the Sony PSP, based on **Bookr V8.1**. Bookr Plus
 makes the 2009 source build with today's PSP toolchain and adds a handful of
 reading improvements: smooth panning and zoom, margin trimming for scanned
-comics, UTF-8 text files, and use of the PSP-2000/3000's extra memory.
+comics, a right-to-left comic mode, UTF-8 text files, and use of the
+PSP-2000/3000's extra memory.
 
 It has been tested on a **PSP-3000 running ARK-4 custom firmware**.
 
@@ -61,14 +62,21 @@ Western European languages.
 | Control | Bookr V8.1 | Bookr Plus |
 | --- | --- | --- |
 | D-pad | Jumps 250 px (up/down) or 460 px (left/right) | Moves **5 px** per press; hold to scroll smoothly |
-| Analog stick | Up to 32 px per frame | From **1 px** per frame (light push) to 10 px (full tilt) |
+| Analog stick | Up to 32 px per frame, slowed down by every page redraw | Timed in **pixels per second**: 30 px/s (light push) to 1200 px/s (full tilt), on a curve that keeps small pushes precise. Same speed even while a slow page redraws |
 | L / R zoom | Fixed steps (1.0, 1.1, … 2.0, 2.25, 2.5 …) | Page width grows or shrinks by **5 px** per press; hold to keep zooming |
 | While zooming | Page re-rendered after every step | Only the "Zoom 1.27x" label updates; the page renders **once, on release** |
 | After zooming | View jumped sideways (pan was multiplied by the absolute zoom) | View **stays centred** on the same spot |
 | Bookmarks / last view | Saved the nearest zoom step | Save the **exact zoom** |
 
 The step sizes are constants at the top of `Bookr/bkpdf.cpp` (`panStep`,
-`analogMaxStep`) and in `BKDocument::processEventsForView` (zoom `step`).
+`analogMinSpeed`, `analogMaxSpeed`) and in `BKDocument::processEventsForView`
+(zoom `step`).
+
+For the smoothest stick movement, turn on **PDF - Fast images** in the options
+menu. The page is then drawn once and moving is just copying memory, so it
+scrolls at the full 60 fps. Without it, every move redraws the page, which is
+slow for image-heavy PDFs such as comics. Bookr Plus now remembers this setting
+between launches (V8.1 turned it off every time).
 
 ### Trim margins
 
@@ -92,6 +100,26 @@ left and right of every page:
 - While trim is on, turning the page **keeps the view position**, so a
   framing you set with the arrows and zoom carries over to the next page.
 - The trim setting and zoom are saved with the book's last view.
+
+### Comic mode
+
+For reading manga and other right-to-left comics with the PSP held upright,
+D-pad at the top.
+
+**SELECT → zoom menu → Comic mode: Off/On** does three things:
+
+- Turns the page **90° counterclockwise**, so the top of the page sits next to
+  the D-pad and the bottom next to the ✕ ○ □ △ buttons.
+- Turns **Trim margins** on, so the page's height fills the screen and the
+  white side margins are gone.
+- Opens every page at its **top-right corner**, where a right-to-left comic
+  starts. This applies to next/previous page and to page jumps. Your zoom is
+  kept.
+
+Turning Comic mode off restores the rotation and trim setting it replaced.
+Bookmarks and the last view remember Comic mode, and still open at the exact
+saved position. The start corner is worked out from the page's rotation, so
+it stays right if you rotate the page while Comic mode is on.
 
 ### Colour pages in image PDFs
 
@@ -125,11 +153,15 @@ If the free number stays under about 15 MB on a PSP-2000/3000, the custom
 firmware is not granting the extra memory. On ARK-4 that is the `highmem`
 setting in `SETTINGS.TXT`.
 
-### Bug fix
+### Bug fixes
 
-`recalcScreenMediaBox()` used the page's `x0` where it meant `y0`. It made
-no difference while every page started at (0, 0), but it would have
-misplaced trimmed pages and PDFs whose crop box does not start at the origin.
+- `recalcScreenMediaBox()` used the page's `x0` where it meant `y0`. It made
+  no difference while every page started at (0, 0), but it would have
+  misplaced trimmed pages and PDFs whose crop box does not start at the
+  origin.
+- The SELECT toolbar always showed **✕** next to "Select", "Turn on" and the
+  other actions, even with the default Asian button style, where **○**
+  selects. It now shows the button that actually selects, like the menus do.
 
 ## Controls
 
@@ -142,7 +174,7 @@ Default in-book controls (changeable in Bookr's menu):
 | R / L | Zoom in / out |
 | △ / □ | Next / previous page |
 | ✕ / ○ | Forward / back 10 pages |
-| SELECT | Toolbar: bookmarks, pages, zoom (fit height, fit width, zoom out, zoom in, **trim margins**), rotation |
+| SELECT | Toolbar: bookmarks, pages, zoom (fit height, fit width, zoom out, zoom in, **trim margins**, **comic mode**), rotation |
 | START | Main menu and options |
 
 ## Installing on a PSP
@@ -226,8 +258,8 @@ Bookr does with `PSP_HEAP_SIZE_KB(-7*1024)`.
   Other scripts would need a larger glyph atlas.
 - **Fast images** mode is still limited to 2x zoom. The extra memory could
   raise that.
-- A **manga mode** (CBZ or image folders, right-to-left page order) and
-  **EPUB** support are possible next steps.
+- **CBZ** comics (or image folders) and **EPUB** support are possible next
+  steps. Comic mode already handles right-to-left reading for PDFs.
 
 ## Credits
 

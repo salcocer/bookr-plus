@@ -40,6 +40,7 @@ class BKPDF : public BKDocument {
 	bool loadNewPage;
 	bool pageError;
 	float pendingZoom;
+	bool comicPageStart;
 	int applyZoom(float z);
 	void panBuffer(int nx, int ny);
 	void clipCoords(float& nx, float& ny);
@@ -79,6 +80,9 @@ class BKPDF : public BKDocument {
 	virtual bool hasTrimMargins();
 	virtual bool getTrimMargins();
 	virtual int setTrimMargins(bool on);
+	virtual bool hasComicMode();
+	virtual bool getComicMode();
+	virtual int setComicMode(bool on);
 
 	virtual int pan(int, int);
 

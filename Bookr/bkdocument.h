@@ -138,6 +138,12 @@ class BKDocument : public BKLayer {
 	virtual bool getTrimMargins() { return false; }
 	virtual int setTrimMargins(bool on) { return 0; }
 
+	// Comic mode - rotate 90 degrees counterclockwise with trim margins on,
+	// and start every page where a right-to-left comic starts, the top right
+	virtual bool hasComicMode() { return false; }
+	virtual bool getComicMode() { return false; }
+	virtual int setComicMode(bool on) { return 0; }
+
 	// Analog pad paning - can be ignored
 	virtual int pan(int, int) = 0;
 

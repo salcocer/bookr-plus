@@ -587,6 +587,10 @@ int FZScreen::getSpeed() {
 #endif
 }
 
+unsigned int FZScreen::getMicros() {
+	return (unsigned int)glutGet(GLUT_ELAPSED_TIME) * 1000;
+}
+
 void FZScreen::getTime(int &h, int &m) {
 	time_t t = time(NULL);
 	struct tm* lt = localtime(&t);

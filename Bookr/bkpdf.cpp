@@ -50,21 +50,37 @@ static const float zoomLevels[] = { 0.25f, 0.5f, 0.75f, 0.90f, 1.0f, 1.1f, 1.2f,
 	1.6f, 1.7f, 1.8f, 1.9f, 2.0f, 2.25f, 2.5f, 2.75f, 3.0f, 3.5f, 4.0f, 5.0f, 7.5f, 10.0f, 16.0f };
 
 static const float rotateLevels[] = { 0.0f, 90.0f, 180.0f, 270.0f };
+// comic mode turns the page 90 degrees counterclockwise
+static const int comicRotateLevel = 3;
 
 // D-pad pans this many screen pixels per step; holding it repeats every frame.
 static const int panStep = 5;
-// The analog stick pans from 1 pixel per frame just outside the dead zone up
-// to analogMaxStep pixels per frame at full tilt.
+// The analog stick pans at a speed in screen pixels per second, not per frame,
+// so it keeps its pace while a slow page is redrawn. Speed grows with the
+// square of the tilt: a light push moves analogMinSpeed for fine positioning,
+// full tilt moves analogMaxSpeed.
 static const int analogDeadZone = 32;
-static const int analogMaxStep = 10;
+static const float analogMinSpeed = 30.0f;
+static const float analogMaxSpeed = 1200.0f;
+// longest time one step may cover, so a stall can't cause a big jump
+static const float analogMaxFrame = 0.15f;
 
-static int analogStep(int v) {
+static float analogSpeed(int v) {
 	int a = v < 0 ? -v : v;
 	if (a < analogDeadZone)
-		return 0;
-	int s = 1 + (a - analogDeadZone) * (analogMaxStep - 1) / (128 - analogDeadZone);
+		return 0.0f;
+	if (a > 127)
+		a = 127;
+	float t = float(a - analogDeadZone) / float(127 - analogDeadZone);
+	float s = analogMinSpeed + (analogMaxSpeed - analogMinSpeed) * t * t;
 	return v < 0 ? -s : s;
 }
+
+// analog pan state: time of the last step and the sub-pixel movement left over
+static bool analogMoving = false;
+static unsigned int analogLastMicros = 0;
+static float analogRestX = 0.0f;
+static float analogRestY = 0.0f;
 
 // singleton
 static unsigned int* bounceBuffer = NULL;
@@ -100,6 +116,11 @@ struct PDFContext {
 		bool known;
 		float x0, x1;
 	} *trims;				// per page cache, allocated on first use
+
+	/* comic mode: rotation and trim to put back when it is turned off */
+	bool comic;
+	int comicPrevRotateLevel;
+	bool comicPrevTrim;
 };
 
 static int pdfInit() {
@@ -374,6 +395,19 @@ static void recalcScreenMediaBox(PDFContext* ctx) {
 	//printf("sCMB (%g, %g) - (%g, %g)\n", bbox.x0, bbox.y0, bbox.x1, bbox.y1);
 }
 
+// Where a right-to-left comic page starts: the top right corner of the
+// content, wherever the rotation puts it on screen. The far edge is a large
+// value that clipCoords pulls back onto the page.
+static void comicStartPan(PDFContext* ctx, int& x, int& y) {
+	const int farEdge = 1 << 20;
+	fz_point p;
+	p.x = ctx->page->mediabox.x1;	// PDF y points up, so y1 is the top
+	p.y = ctx->page->mediabox.y1;
+	p = fz_transformpoint(pdfViewctm(ctx), p);
+	x = p.x > (screenMediaBox.x0 + screenMediaBox.x1) / 2.0f ? farEdge : 0;
+	y = p.y > (screenMediaBox.y0 + screenMediaBox.y1) / 2.0f ? farEdge : 0;
+}
+
 // PDF page tree optimization --------------------------------------------------
 
 fz_error * fakeImageTile(fz_image *img, fz_pixmap *tile) {
@@ -625,7 +659,7 @@ static int pdfLoadPage(PDFContext* ctx) {
 	return 0;
 }
 
-BKPDF::BKPDF(string& f) : ctx(0), fileName(f), panX(0), panY(0), loadNewPage(false), pageError(false), pendingZoom(0.0f) {
+BKPDF::BKPDF(string& f) : ctx(0), fileName(f), panX(0), panY(0), loadNewPage(false), pageError(false), pendingZoom(0.0f), comicPageStart(false) {
 }
 
 static BKPDF* singleton = 0;
@@ -983,6 +1017,41 @@ int BKPDF::setTrimMargins(bool on) {
 	return BK_CMD_MARK_DIRTY;
 }
 
+bool BKPDF::hasComicMode() {
+	return true;
+}
+
+bool BKPDF::getComicMode() {
+	return ctx->comic;
+}
+
+// Comic mode turns the page and trims its margins in one step, and remembers
+// the rotation and trim it replaced so turning it off puts them back.
+int BKPDF::setComicMode(bool on) {
+	if (on == ctx->comic)
+		return 0;
+	ctx->comic = on;
+	if (on) {
+		ctx->comicPrevRotateLevel = ctx->rotateLevel;
+		ctx->comicPrevTrim = ctx->trim;
+		ctx->rotateLevel = comicRotateLevel;
+		if (!ctx->trim) {
+			ctx->trim = true;
+			ctx->trimFit = 1.0f;
+		}
+		comicPageStart = true;
+	} else {
+		ctx->rotateLevel = ctx->comicPrevRotateLevel;
+		if (!ctx->comicPrevTrim) {
+			ctx->trim = false;
+			ctx->trimFit = 0.0f;
+		}
+	}
+	ctx->rotate = rotateLevels[ctx->rotateLevel];
+	loadNewPage = true;
+	return BK_CMD_MARK_DIRTY;
+}
+
 int BKPDF::finishFineZoom() {
 	if (pendingZoom <= 0.0f)
 		return 0;
@@ -1023,6 +1092,7 @@ void BKPDF::getBookmarkPosition(map<string, int>& m) {
 	m["panX"] = panX;
 	m["panY"] = panY;
 	m["rotation"] = ctx->rotateLevel;
+	m["comic"] = ctx->comic ? 1 : 0;
 }
 
 int BKPDF::setBookmarkPosition(map<string, int>& m) {
@@ -1039,9 +1109,13 @@ int BKPDF::setBookmarkPosition(map<string, int>& m) {
 		ctx->trimFit = (tf != m.end() && tf->second > 0) ? float(tf->second) / 1000.0f : 1.0f;
 		loadNewPage = true;
 	}
+	map<string, int>::iterator cm = m.find("comic");
+	ctx->comic = cm != m.end() && cm->second != 0;
 	setRotation(m["rotation"]);
 	panX = m["panX"];
 	panY = m["panY"];
+	// the saved view wins over the comic page start
+	comicPageStart = false;
 	return BK_CMD_MARK_DIRTY;
 }
 
@@ -1069,9 +1143,12 @@ int BKPDF::setCurrentPage(int position) {
 		char t[256];
 		snprintf(t, 256, "Loading page %d", ctx->pageno);
 		setBanner(t);
-		// with trim margins every page is framed alike, so keep the view
-		// where it was; otherwise start the new page at the top
-		if (!ctx->trim)
+		// comic mode starts every page at its top right corner; with trim
+		// margins every page is framed alike, so keep the view where it was;
+		// otherwise start the new page at the top
+		if (ctx->comic)
+			comicPageStart = true;
+		else if (!ctx->trim)
 			panY = 0;
 		return BK_CMD_MARK_DIRTY;
 	}
@@ -1139,11 +1216,33 @@ int BKPDF::prePan(int x, int y) {
 }
 
 int BKPDF::pan(int x, int y) {
-	x = analogStep(x);
-	y = analogStep(y);
-	if (x == 0 && y == 0)
+	float sx = analogSpeed(x);
+	float sy = analogSpeed(y);
+	if (sx == 0.0f)
+		analogRestX = 0.0f;
+	if (sy == 0.0f)
+		analogRestY = 0.0f;
+	if (sx == 0.0f && sy == 0.0f) {
+		analogMoving = false;
 		return 0;
-	return prePan(x, y);
+	}
+	// the first step after leaving the dead zone covers one frame
+	unsigned int now = FZScreen::getMicros();
+	float dt = analogMoving ? float(now - analogLastMicros) / 1000000.0f : 1.0f / 60.0f;
+	if (dt > analogMaxFrame)
+		dt = analogMaxFrame;
+	analogMoving = true;
+	analogLastMicros = now;
+	// keep the fraction, so a light push still creeps smoothly
+	float fx = analogRestX + sx * dt;
+	float fy = analogRestY + sy * dt;
+	int dx = int(fx);
+	int dy = int(fy);
+	analogRestX = fx - dx;
+	analogRestY = fy - dy;
+	if (dx == 0 && dy == 0)
+		return 0;
+	return prePan(dx, dy);
 }
 
 int BKPDF::screenUp() {
@@ -1408,6 +1507,8 @@ int BKPDF::updateContent() {
 	if (loadNewPage) {
 		pageError = pdfLoadPage(ctx) != 0;
 		if (!pageError) {
+			if (comicPageStart)
+				comicStartPan(ctx, panX, panY);
 			// the page size can change with trim margins
 			float nx = float(panX);
 			float ny = float(panY);
@@ -1417,6 +1518,7 @@ int BKPDF::updateContent() {
 		}
 		redrawBuffer();
 		loadNewPage = false;
+		comicPageStart = false;
 		char t[256];
 		int skipped = bk_pdf_skippedimages();
 		if (skipped > 0)

@@ -144,6 +144,7 @@ void BKUser::save() {
 	fprintf(f, "\t\t<set option=\"lastFolder\" value=\"%s\" />\n", options.lastFolder.c_str());
 	fprintf(f, "\t\t<set option=\"lastFontFolder\" value=\"%s\" />\n", options.lastFontFolder.c_str());
 	fprintf(f, "\t\t<set option=\"loadLastFile\" value=\"%d\" />\n", options.loadLastFile ? 1 : 0);
+	fprintf(f, "\t\t<set option=\"pdfFastScroll\" value=\"%d\" />\n", options.pdfFastScroll ? 1 : 0);
 	fprintf(f, "\t\t<set option=\"txtWrapCR\" value=\"%d\" />\n", options.txtWrapCR);
 	fprintf(f, "\t\t<set option=\"browserTextSize\" value=\"%d\" />\n", options.browserTextSize);
 	fprintf(f, "\t\t<set option=\"browserDisplayMode\" value=\"%d\" />\n", options.browserDisplayMode);
@@ -264,6 +265,7 @@ void BKUser::load() {
 			else if (strncmp(option, "lastFolder",      128) == 0) options.lastFolder      = value;
 			else if (strncmp(option, "lastFontFolder",  128) == 0) options.lastFontFolder  = value;
 			else if (strncmp(option, "loadLastFile",    128) == 0) options.loadLastFile    = atoi(value) != 0;
+			else if (strncmp(option, "pdfFastScroll",   128) == 0) options.pdfFastScroll   = atoi(value) != 0;
 			else if (strncmp(option, "txtWrapCR",       128) == 0) options.txtWrapCR       = atoi(value);
 
 			else if (strncmp(option, "browserTextSize",      128) == 0) options.browserTextSize      = atoi(value);
