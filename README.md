@@ -12,6 +12,23 @@ Bookr reads plain text, PDF, CHM, HTML, DjVu and PalmDoc/Mobipocket (without
 DRM). The original V8.1 readme is kept in
 [README.original.md](README.original.md).
 
+## Screenshots
+
+| | |
+| --- | --- |
+| ![File browser](docs/screenshots/01-file-browser.png) | ![A Spanish UTF-8 text file](docs/screenshots/02-text-utf8.png) |
+| The file browser | A UTF-8 text file in Spanish, accents included |
+| ![A PDF page](docs/screenshots/03-pdf.png) | ![The zoom menu](docs/screenshots/04-zoom-menu.png) |
+| A PDF page at fit width | A colour comic, with the zoom menu's new **Trim margins** and **Comic mode** items |
+| ![Comic mode](docs/screenshots/05-comic-mode.png) | |
+| Comic mode: the page is turned for holding the PSP upright, D-pad on top, and opens at its top-right corner | |
+
+These were taken in the [PPSSPP](https://www.ppsspp.org/) emulator running the
+same `EBOOT.PBP`, so the memory counter shows the emulator's memory, a little
+more than a real PSP-3000 has. The books are public domain: *Don Quijote*
+(Cervantes), *Alice's Adventures in Wonderland* (Lewis Carroll, illustrated by
+John Tenniel) and *Little Nemo in Slumberland* (Winsor McCay, 1905).
+
 ## What's new compared to Bookr V8.1
 
 ### Builds with the current PSP toolchain
