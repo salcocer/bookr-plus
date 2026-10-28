@@ -3,8 +3,9 @@
 A PDF and e-book reader for the Sony PSP, based on **Bookr V8.1**. Bookr Plus
 makes the 2009 source build with today's PSP toolchain and adds a handful of
 reading improvements: smooth panning and zoom, margin trimming for scanned
-comics, a right-to-left comic mode, UTF-8 text files, and use of the
-PSP-2000/3000's extra memory.
+comics, a right-to-left comic mode, UTF-8 text files, zoom for text files,
+screenshots saved to the Memory Stick, a neobrutalist interface, and use of
+the PSP-2000/3000's extra memory.
 
 It has been tested on a **PSP-3000 running ARK-4 custom firmware**.
 
@@ -25,7 +26,8 @@ DRM). The original V8.1 readme is kept in
 
 These were taken in the [PPSSPP](https://www.ppsspp.org/) emulator running the
 same `EBOOT.PBP`, so the memory counter shows the emulator's memory, a little
-more than a real PSP-3000 has. The books are public domain: *Don Quijote*
+more than a real PSP-3000 has. The file browser and zoom menu shots still show
+the grey interface from before the [neobrutalist restyle](#neobrutalist-interface). The books are public domain: *Don Quijote*
 (Cervantes), *Alice's Adventures in Wonderland* (Lewis Carroll, illustrated by
 John Tenniel) and *Little Nemo in Slumberland* (Winsor McCay, 1905).
 
@@ -73,6 +75,22 @@ all.
 
 This covers Spanish, French, Portuguese, German, Italian and other
 Western European languages.
+
+### Zoom for text files
+
+In V8.1, L / R did nothing in text files. The text size could only be changed
+in the options menu, and changing it reloaded the whole file.
+
+- **R / L** (the zoom in / zoom out buttons) make the text 1 px bigger or
+  smaller per press, from 6 to 20 px. A "Text size 16 px" banner shows the new
+  size.
+- The text re-wraps in place, and the paragraph at the top of the screen stays
+  there. The page count updates to match.
+- The size is the same setting as **Options → Plain text - Font size**, so it
+  is saved and the next text file opens at that size.
+- The toolbar's zoom menu now has **Zoom out** and **Zoom in** for text files
+  too; it used to say "No zoom support".
+- PalmDoc/Mobipocket books use the same text engine, so they zoom too.
 
 ### Precise movement and zoom in PDFs
 
@@ -170,6 +188,49 @@ If the free number stays under about 15 MB on a PSP-2000/3000, the custom
 firmware is not granting the extra memory. On ARK-4 that is the `highmem`
 setting in `SETTINGS.TXT`.
 
+### Screenshots to the Memory Stick
+
+**SELECT → camera menu → Screenshot** saves what is on the screen as a PNG:
+
+- The toolbar closes first and the page is redrawn without banners or tips,
+  so the picture shows only the page, exactly as you see it, including zoom,
+  rotation and comic mode.
+- Files go to `PICTURE/BookrPlus/` on the Memory Stick, named by date and
+  time, for example `BookrPlus_20261028_234029.png`. Two shots in the same
+  second get `_2`, `_3`. The PSP's **Photo** menu lists them.
+- A green box in the middle of the screen says **Screenshot saved** with the
+  file name, then fades out. If the file can't be created or written (Memory
+  Stick full or locked), a red **Screenshot failed** box gives the reason
+  instead.
+- Each shot is 480 × 272, usually 30 to 400 KB.
+
+The image is read from the frame buffer the display is showing
+(`sceDisplayGetFrameBuf`) and written with libpng, which Bookr already links
+for its textures (`FZScreen::saveScreenshot()` in `Bookr/fzscreenpsp.cpp`).
+To make room for the fifth toolbar menu, the CPU speed moved up next to the
+page number.
+
+### Neobrutalist interface
+
+Bookr Plus has its own look: flat bright colours, thick black outlines, hard
+black shadows and square corners, in place of V8.1's translucent grey rounded
+panels.
+
+| Element | Look |
+| --- | --- |
+| Start screen | Cream background, a new logo (a yellow "Bookr" card with a tilted pink "PLUS" sticker) and a pink **Press Start** button |
+| Menus and file browser | Cream panels, yellow title bar, cyan button bar, pink selection, black text |
+| Toolbar | Cream bar; the open menu is a white column and the selected item a pink box |
+| Icons | Black, with hard edges |
+| Popups | Yellow title for warnings, cyan for information, red for errors |
+| XMB icon | Matches the new logo, on a transparent background |
+
+The colours you read in (**Color schemes**) are not affected. The palette is
+the `NEO_*` constants in `Bookr/bklayer.h`, written as `0xAABBGGRR`, the byte
+order the PSP's GPU uses, and every panel is drawn by `BKLayer::drawNeoBox()`.
+The icons in `data/ui.png` and `data/ui2.png` are white and tinted when drawn,
+so their colour is set in code.
+
 ### Bug fixes
 
 - `recalcScreenMediaBox()` used the page's `x0` where it meant `y0`. It made
@@ -188,10 +249,10 @@ Default in-book controls (changeable in Bookr's menu):
 | --- | --- |
 | D-pad | Move 5 px (hold to scroll) |
 | Analog stick | Move, speed depends on how far it is pushed |
-| R / L | Zoom in / out |
+| R / L | Zoom in / out (PDF: page width; text files: text size) |
 | △ / □ | Next / previous page |
 | ✕ / ○ | Forward / back 10 pages |
-| SELECT | Toolbar: bookmarks, pages, zoom (fit height, fit width, zoom out, zoom in, **trim margins**, **comic mode**), rotation |
+| SELECT | Toolbar: bookmarks, pages, zoom (fit height, fit width, zoom out, zoom in, **trim margins**, **comic mode**), rotation, **screenshot** |
 | START | Main menu and options |
 
 ## Installing on a PSP
@@ -273,6 +334,10 @@ Bookr does with `PSP_HEAP_SIZE_KB(-7*1024)`.
   edges would fix it.
 - **Text files** support Western European characters only (Windows-1252).
   Other scripts would need a larger glyph atlas.
+- **Text zoom** re-wraps the whole file at every step, so a very large `.txt`
+  file can take a moment per press on the PSP.
+- **Screenshots** are at screen resolution (480 × 272). Saving a whole PDF
+  page at full resolution would need a separate export.
 - **Fast images** mode is still limited to 2x zoom. The extra memory could
   raise that.
 - **CBZ** comics (or image folders) and **EPUB** support are possible next
