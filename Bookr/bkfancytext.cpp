@@ -603,19 +603,44 @@ int BKFancyText::setBookmarkPosition(map<string, int>& m) {
 	return BK_CMD_MARK_DIRTY;
 }
 
+// zoom for text is the font size: one level per pixel, same range as the options menu
+#define BK_TXT_MIN_SIZE 6
+#define BK_TXT_MAX_SIZE 20
+
 bool BKFancyText::isZoomable() {
-	return false;
+	return true;
 }
 
 void BKFancyText::getZoomLevels(vector<BKDocument::ZoomLevel>& v) {
+	char t[32];
+	for (int s = BK_TXT_MIN_SIZE; s <= BK_TXT_MAX_SIZE; s++) {
+		snprintf(t, 32, "Text size %d px", s);
+		v.push_back(BKDocument::ZoomLevel(BKDOCUMENT_ZOOMTYPE_ABSOLUTE, t));
+	}
 }
 
 int BKFancyText::getCurrentZoomLevel() {
-	return 0;
+	return BKUser::options.txtSize - BK_TXT_MIN_SIZE;
 }
 
 int BKFancyText::setZoomLevel(int l) {
-	return 0;
+	int s = l + BK_TXT_MIN_SIZE;
+	if (s < BK_TXT_MIN_SIZE)
+		s = BK_TXT_MIN_SIZE;
+	if (s > BK_TXT_MAX_SIZE)
+		s = BK_TXT_MAX_SIZE;
+	if (s == BKUser::options.txtSize)
+		return 0;
+	BKUser::options.txtSize = s;
+	// relayout in place instead of a full reload, keeping the top line's text on screen
+	lastFontSize = s;
+	resetFonts();
+	setRotation(rotation, true);
+	BKUser::save();
+	char t[32];
+	snprintf(t, 32, "Text size %d px", s);
+	setBanner(t);
+	return BK_CMD_MARK_DIRTY;
 }
 
 bool BKFancyText::hasZoomToFit() {
