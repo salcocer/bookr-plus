@@ -3,15 +3,15 @@
 A PDF and e-book reader for the Sony PSP, based on **Bookr V8.1**. Bookr Plus
 makes the 2009 source build with today's PSP toolchain and adds a handful of
 reading improvements: smooth panning and zoom, margin trimming for scanned
-comics, a right-to-left comic mode, UTF-8 text files, zoom for text files,
-screenshots saved to the Memory Stick, a neobrutalist interface, and use of
-the PSP-2000/3000's extra memory.
+comics, a right-to-left comic mode, EPUB books, UTF-8 text files, zoom for
+text files, screenshots saved to the Memory Stick, a neobrutalist interface,
+and use of the PSP-2000/3000's extra memory.
 
 It has been tested on a **PSP-3000 running ARK-4 custom firmware**.
 
-Bookr reads plain text, PDF, CHM, HTML, DjVu and PalmDoc/Mobipocket (without
-DRM). The original V8.1 readme is kept in
-[README.original.md](README.original.md).
+Bookr Plus reads plain text, PDF, EPUB, CHM, HTML, DjVu and
+PalmDoc/Mobipocket (EPUB and Mobipocket without DRM). The original V8.1
+readme is kept in [README.original.md](README.original.md).
 
 ## Screenshots
 
@@ -90,7 +90,36 @@ in the options menu, and changing it reloaded the whole file.
   is saved and the next text file opens at that size.
 - The toolbar's zoom menu now has **Zoom out** and **Zoom in** for text files
   too; it used to say "No zoom support".
-- PalmDoc/Mobipocket books use the same text engine, so they zoom too.
+- EPUB and PalmDoc/Mobipocket books use the same text engine, so they zoom
+  too.
+
+### EPUB books
+
+`.epub` files open like any other book. The chapters are read in the book's
+reading order and joined into one document, with a blank line between
+chapters, so text zoom, bookmarks, the last view, rotation and screenshots all
+work as they do for text files. Accents and typographic quotes show correctly.
+
+- **Text only:** images, bold and italics, and the book's own styles are
+  not shown.
+- **DRM:** books whose chapters are encrypted (most bought in online stores)
+  are refused with "invalid or corrupted file" instead of showing garbage.
+  Font obfuscation, which many store books use, is not DRM and opens fine.
+  EPUBs from Project Gutenberg, Standard Ebooks or your own unprotected files
+  work.
+- **Size:** a book's chapters can add up to 8 MB of text, enough for very
+  long novels. A 2 MB book takes a few seconds on the "Loading..." screen.
+
+How it works (`Bookr/bkepub.cpp`): the EPUB is a ZIP archive, so Bookr reads
+its central directory and inflates the files it needs with zlib.
+`META-INF/container.xml` names the package (OPF) file, whose manifest maps
+ids to files and whose spine gives the chapter order (items marked
+`linear="no"`, such as covers and notes, are skipped). The chapters go through
+the same HTML parser as Mobipocket books. Before that, `<div>` blocks and
+table rows become line breaks, and HTML5's `<header>` is renamed, because the
+parser would take it for `<head>` and skip its text. The bundled TinyXML
+rejects common EPUB 3 metadata, so container.xml and the OPF are read with a
+small tag scanner instead.
 
 ### Precise movement and zoom in PDFs
 
@@ -240,6 +269,15 @@ so their colour is set in code.
 - The SELECT toolbar always showed **✕** next to "Select", "Turn on" and the
   other actions, even with the default Asian button style, where **○**
   selects. It now shows the button that actually selects, like the menus do.
+- In HTML-based books (Mobipocket, and now EPUB) the first letter of each
+  paragraph was drawn at the end of the line before it ("…Rabbit-Hole **A**" /
+  "**lice** was…") when the text started right after the `<p>` tag. The line
+  layout ends a line after the first character of the next paragraph, which in
+  text files is the invisible newline; HTML paragraphs now start with a space
+  in the same way.
+- HTML character references such as `&amp;`, `&nbsp;`, `&eacute;` and
+  `&#8217;` were shown as typed. They are now decoded, in Mobipocket books
+  too.
 
 ## Controls
 
@@ -332,16 +370,20 @@ Bookr does with `PSP_HEAP_SIZE_KB(-7*1024)`.
 - **Trim margins** keeps page numbers and other marks in the margin, so
   content can sit slightly off-centre. Ignoring small isolated marks near the
   edges would fix it.
-- **Text files** support Western European characters only (Windows-1252).
-  Other scripts would need a larger glyph atlas.
+- **Text files and EPUBs** support Western European characters only
+  (Windows-1252). Other scripts would need a larger glyph atlas.
 - **Text zoom** re-wraps the whole file at every step, so a very large `.txt`
-  file can take a moment per press on the PSP.
+  or EPUB file can take a moment per press on the PSP.
+- **EPUBs** show text only, in one continuous flow. Images, bold and italics,
+  and a chapter list from the book's table of contents would be the next
+  steps.
 - **Screenshots** are at screen resolution (480 × 272). Saving a whole PDF
   page at full resolution would need a separate export.
 - **Fast images** mode is still limited to 2x zoom. The extra memory could
   raise that.
-- **CBZ** comics (or image folders) and **EPUB** support are possible next
-  steps. Comic mode already handles right-to-left reading for PDFs.
+- **CBZ** comics (or image folders) are a possible next step. Comic mode
+  already handles right-to-left reading for PDFs, and the EPUB code already
+  reads ZIP archives.
 
 ## Credits
 
