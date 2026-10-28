@@ -44,19 +44,19 @@ void BKPopup::render() {
 	int bg2 = 0;
 	int fg = 0;
 	if (mode == BKPOPUP_WARNING) {
-		bg1 = 0xf02020a0;
-		bg2 = 0xf06060ff;
-		fg = 0xffffffff;
+		bg1 = NEO_WHITE;
+		bg2 = NEO_YELLOW;
+		fg = NEO_INK;
 		title = "Warning";
 	} else if (mode == BKPOPUP_INFO) {
-		bg1 = 0xf0a02020;
-		bg2 = 0xf0ff6060;
-		fg = 0xffffffff;
+		bg1 = NEO_WHITE;
+		bg2 = NEO_CYAN;
+		fg = NEO_INK;
 		title = "Info";
 	} else {
-		bg1 = 0xf02020a0;
-		bg2 = 0xf06060ff;
-		fg = 0xffffffff;
+		bg1 = NEO_WHITE;
+		bg2 = NEO_RED;
+		fg = NEO_INK;
 		title = "Error";
 	}
 	drawPopup(text, title, bg1, bg2, fg);

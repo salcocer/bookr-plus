@@ -25,7 +25,11 @@
 #include <pspgum.h>
 #include <psppower.h>
 #include <psprtc.h>
+#include <pspiofilemgr.h>
 #include <malloc.h>
+#include <stdio.h>
+#include <setjmp.h>
+#include <png.h>
 
 #include <string.h>
 #include <algorithm>
@@ -429,6 +433,74 @@ void FZScreen::getTime(int &h, int &m) {
 		h = time.hour;
 		m = time.minute;
 	}
+}
+
+void FZScreen::getDateTime(int &year, int &month, int &day, int &h, int &m, int &s) {
+	ScePspDateTime time;
+	memset(&time, 0, sizeof(time));
+	sceRtcGetCurrentClockLocalTime(&time);
+	year = time.year;
+	month = time.month;
+	day = time.day;
+	h = time.hour;
+	m = time.minute;
+	s = time.second;
+}
+
+void FZScreen::makeDir(const char* path) {
+	sceIoMkdir(path, 0777);
+}
+
+int FZScreen::saveScreenshot(const char* path) {
+	void* top = 0;
+	int bufferWidth = 0, pixelFormat = 0;
+	// the buffer last handed to the display, i.e. what is on screen now
+	if (sceDisplayGetFrameBuf(&top, &bufferWidth, &pixelFormat, PSP_DISPLAY_SETBUF_NEXTFRAME) < 0 || top == 0
+		|| pixelFormat != PSP_DISPLAY_PIXEL_FORMAT_8888)
+		return FZ_SCREENSHOT_ERR_FORMAT;
+	// read through the uncached mirror so the CPU sees what the GE wrote
+	unsigned int* vram = (unsigned int*)(((unsigned int)top) | 0x40000000);
+
+	FILE* f = fopen(path, "wb");
+	if (f == 0)
+		return FZ_SCREENSHOT_ERR_OPEN;
+	unsigned char* row = (unsigned char*)malloc(480 * 3);
+	png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	png_infop info = png ? png_create_info_struct(png) : NULL;
+	if (row == 0 || png == 0 || info == 0 || setjmp(png_jmpbuf(png))) {
+		// also lands here when libpng fails to write, e.g. the stick is full
+		if (png)
+			png_destroy_write_struct(&png, info ? &info : NULL);
+		free(row);
+		fclose(f);
+		remove(path);
+		return FZ_SCREENSHOT_ERR_WRITE;
+	}
+	png_init_io(png, f);
+	png_set_compression_level(png, 3);
+	png_set_filter(png, 0, PNG_FILTER_SUB);
+	png_set_IHDR(png, info, 480, 272, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+		PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+	png_write_info(png, info);
+	for (int y = 0; y < 272; y++) {
+		unsigned int* p = vram + y * bufferWidth;
+		unsigned char* q = row;
+		for (int x = 0; x < 480; x++) {
+			unsigned int c = p[x];		// 0xAABBGGRR
+			*q++ = c & 0xff;
+			*q++ = (c >> 8) & 0xff;
+			*q++ = (c >> 16) & 0xff;
+		}
+		png_write_row(png, row);
+	}
+	png_write_end(png, info);
+	png_destroy_write_struct(&png, &info);
+	free(row);
+	if (fclose(f) != 0) {
+		remove(path);
+		return FZ_SCREENSHOT_ERR_WRITE;
+	}
+	return 0;
 }
 
 int FZScreen::getBattery() {

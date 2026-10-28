@@ -87,6 +87,16 @@ using namespace std;
 #define BK_IMG_FOLDER_XSIZE 20
 #define BK_IMG_FOLDER_YSIZE 20
 
+// Bookr Plus neobrutalism palette (the PSP GU takes colours as 0xAABBGGRR)
+#define NEO_INK    0xff111111
+#define NEO_CREAM  0xffdcf4ff
+#define NEO_WHITE  0xffffffff
+#define NEO_YELLOW 0xff3fd2ff
+#define NEO_PINK   0xffe890ff
+#define NEO_CYAN   0xfff0e77f
+#define NEO_RED    0xff6b6bff
+#define NEO_GREEN  0xff35e6a3
+
 class BKLayer : public FZRefCounted {
 	protected:
 	static FZFont* fontBig;
@@ -100,6 +110,8 @@ class BKLayer : public FZRefCounted {
 	void drawRect(int x, int y, int w, int h, int r, int tx, int ty);
 	void drawPill(int x, int y, int w, int h, int r, int tx, int ty);
 	void drawTPill(int x, int y, int w, int h, int r, int tx, int ty);
+	void drawNeoRect(int x, int y, int w, int h, unsigned int color);
+	void drawNeoBox(int x, int y, int w, int h, unsigned int fill, int border = 3, int shadow = 4, unsigned int ink = NEO_INK);
 	int drawText(char* t, FZFont* font, int x, int y, int n = -1, bool useLF = true, bool usePS = false, float ps = 0.0f, bool use3D = false);
 
 	void drawTextHC(char* t, FZFont* font, int y);

@@ -624,5 +624,16 @@ int FZScreen::getUsedMemory() {
 int FZScreen::getFreeMemory() {
 	return 0;
 }
+
+void FZScreen::getDateTime(int &year, int &month, int &day, int &h, int &m, int &s) {
+	year = 2000; month = 1; day = 1; h = 0; m = 0; s = 0;
+}
+
+void FZScreen::makeDir(const char* path) {
+}
+
+int FZScreen::saveScreenshot(const char* path) {
+	return FZ_SCREENSHOT_ERR_FORMAT;
+}
 	
 

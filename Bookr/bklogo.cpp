@@ -46,38 +46,37 @@ int BKLogo::update(unsigned int buttons) {
 }
 
 void BKLogo::render() {
-	FZScreen::clear(0xffffff, FZ_COLOR_BUFFER);
+	FZScreen::clear(NEO_CREAM & 0xffffff, FZ_COLOR_BUFFER);
 	FZScreen::color(0xffffffff);
 	FZScreen::matricesFor2D();
 	FZScreen::enable(FZ_TEXTURE_2D);
-	FZScreen::disable(FZ_BLEND);
-	texLogo->bindForDisplay();
-	drawImage(480/2 - 64, 50, 128, 128, 0, 0);
 	FZScreen::enable(FZ_BLEND);
 	FZScreen::blendFunc(FZ_ADD, FZ_SRC_ALPHA, FZ_ONE_MINUS_SRC_ALPHA);
+	texLogo->bindForDisplay();
+	drawImage(480/2 - 128, 24, 256, 128, 0, 0);
+	char formats[] = "PDF - TXT - PalmDoc - DJVU - CHM - HTML";
+	int fw = textW(formats, fontBig);
 	texUI->bindForDisplay();
-	FZScreen::ambientColor(0xf0222222);
-//	drawPill(150, 240, 180, 20, 6, 31, 1);
-	drawPill(20, 240, 430, 20, 6, 31, 1);
+	drawNeoBox((480 - fw)/2 - 12, 172, fw + 24, 26, NEO_WHITE, 2, 3);
+	drawNeoBox(20, 230, 436, 30, NEO_PINK, 3, 4);
 	fontBig->bindForDisplay();
-	FZScreen::ambientColor(0xff000000);
-	drawTextHC("PDF - TXT - PalmDoc - DJVU - CHM - HTML", fontBig, 180);
-	FZScreen::ambientColor(0xffffffff);
+	FZScreen::ambientColor(NEO_INK);
+	drawTextHC(formats, fontBig, 177);
 	if (loading)
-		drawTextHC("Loading...", fontBig, 244);
+		drawTextHC("Loading...", fontBig, 237);
 	else if (text.length() > 0)
-		drawTextHC((char*) text.c_str(), fontBig, 244);
+		drawTextHC((char*) text.c_str(), fontBig, 237);
 	else {
 		if (error) {
 			texUI->bindForDisplay();
-			FZScreen::ambientColor(0xf06060ff);
-			drawRect(0, 126, 480, 26, 6, 31, 1);
+			drawNeoRect(0, 123, 480, 32, NEO_INK);
+			drawNeoRect(0, 126, 480, 26, NEO_RED);
 			fontBig->bindForDisplay();
-			FZScreen::ambientColor(0xff222222);
+			FZScreen::ambientColor(NEO_INK);
 			drawTextHC("Error: invalid or corrupted file", fontBig, 130);
 		}
-		FZScreen::ambientColor(0xffffffff);
-		drawTextHC("Press Start", fontBig, 244);
+		FZScreen::ambientColor(NEO_INK);
+		drawTextHC("Press Start", fontBig, 237);
 	}
 }
 

@@ -51,7 +51,8 @@ BKDocument* BKDocument::create(string& filePath) {
 	return doc;
 }
 
-BKDocument::BKDocument() : 	mode(BKDOC_VIEW), bannerFrames(0), banner(""), 	tipFrames(120), toolbarSelMenu(0), toolbarSelMenuItem(0), frames(0) {
+BKDocument::BKDocument() : 	mode(BKDOC_VIEW), bannerFrames(0), banner(""), 	tipFrames(120), toolbarSelMenu(0), toolbarSelMenuItem(0), frames(0),
+	screenshotPending(false), noticeFrames(0), noticeError(false) {
 	lastSuspendSerial = FZScreen::getSuspendSerial();
 }
 
@@ -79,6 +80,80 @@ void BKDocument::setBanner(char* b) {
 	bannerFrames = 60;
 }
 
+void BKDocument::setNotice(const char* title, const char* text, bool error) {
+	noticeTitle = title;
+	noticeText = text;
+	noticeError = error;
+	noticeFrames = 150;
+}
+
+void BKDocument::drawNotice() {
+	if (noticeFrames <= 0 || screenshotPending)
+		return;
+	int alpha = 0xff;
+	if (noticeFrames <= 32)
+		alpha = noticeFrames*(256/32) - 8;
+	if (alpha <= 0)
+		return;
+	unsigned int a = alpha << 24;
+	int lh = fontBig->getLineHeight();
+	int w1 = textW((char*)noticeTitle.c_str(), fontBig);
+	int w2 = textW((char*)noticeText.c_str(), fontBig);
+	int w = (w1 > w2 ? w1 : w2) + 40;
+	int h = 2*lh + 22;
+	int x = (480 - w) / 2;
+	int y = (272 - h) / 2;
+	texUI->bindForDisplay();
+	drawNeoBox(x, y, w, h, ((noticeError ? NEO_RED : NEO_GREEN) & 0xffffff) | a, 3, 5, (NEO_INK & 0xffffff) | a);
+	fontBig->bindForDisplay();
+	FZScreen::ambientColor((NEO_INK & 0xffffff) | a);
+	drawTextHC((char*)noticeTitle.c_str(), fontBig, y + 10);
+	drawTextHC((char*)noticeText.c_str(), fontBig, y + 10 + lh);
+}
+
+int BKDocument::takeScreenshot() {
+	// PICTURE/BookrPlus on the device the EBOOT runs from, so the XMB Photo menu lists them
+	string dir(FZScreen::basePath());
+	string::size_type colon = dir.find(':');
+	dir = colon == string::npos ? string("ms0:") : dir.substr(0, colon + 1);
+	dir += "/PICTURE";
+	FZScreen::makeDir(dir.c_str());
+	dir += "/BookrPlus";
+	FZScreen::makeDir(dir.c_str());
+
+	int year = 0, month = 0, day = 0, h = 0, m = 0, s = 0;
+	FZScreen::getDateTime(year, month, day, h, m, s);
+	char name[64];
+	snprintf(name, 64, "BookrPlus_%04d%02d%02d_%02d%02d%02d", year, month, day, h, m, s);
+	string path;
+	for (int i = 1; i < 100; i++) {
+		// two shots within the same second get _2, _3...
+		char suffix[8] = "";
+		if (i > 1)
+			snprintf(suffix, 8, "_%d", i);
+		path = dir + "/" + name + suffix + ".png";
+		FILE* f = fopen(path.c_str(), "rb");
+		if (f == 0)
+			break;
+		fclose(f);
+	}
+
+	FZScreen::setSpeed(BKUser::options.pspMenuSpeed);
+	int r = FZScreen::saveScreenshot(path.c_str());
+	FZScreen::setSpeed(BKUser::options.pspSpeed);
+	if (r == 0) {
+		string shown(path, path.find('/') + 1);		// drop the device, e.g. "ms0:/"
+		setNotice("Screenshot saved", shown.c_str(), false);
+	} else if (r == FZ_SCREENSHOT_ERR_OPEN) {
+		setNotice("Screenshot failed", "Couldn't create the file on the Memory Stick", true);
+	} else if (r == FZ_SCREENSHOT_ERR_WRITE) {
+		setNotice("Screenshot failed", "Couldn't write the image. Memory Stick full?", true);
+	} else {
+		setNotice("Screenshot failed", "This screen format isn't supported", true);
+	}
+	return r;
+}
+
 int BKDocument::update(unsigned int buttons) {
 	// let the view quit update processing early for some special events
 	if (lastSuspendSerial != FZScreen::getSuspendSerial()) {
@@ -93,10 +168,20 @@ int BKDocument::update(unsigned int buttons) {
 
 	bannerFrames--;
 	tipFrames--;
+	noticeFrames--;
 	if (bannerFrames < 0)
 		bannerFrames = 0;
 	if (tipFrames < 0)
 		tipFrames = 0;
+	if (noticeFrames < 0)
+		noticeFrames = 0;
+
+	// the clean frame asked for when the screenshot item closed the toolbar is on screen now
+	if (screenshotPending) {
+		takeScreenshot();
+		screenshotPending = false;
+		return BK_CMD_MARK_DIRTY;
+	}
 
 	// banner fade - this blocks event input during the fade
 	//if (bannerFrames > 0)
@@ -112,6 +197,8 @@ int BKDocument::update(unsigned int buttons) {
 	if (bannerFrames > 0 && r == 0)
 		r = BK_CMD_MARK_DIRTY;
 	if (tipFrames > 0 && r == 0)
+		r = BK_CMD_MARK_DIRTY;
+	if (noticeFrames > 0 && r == 0)
 		r = BK_CMD_MARK_DIRTY;
 
 	// clock tick
@@ -409,6 +496,18 @@ void BKDocument::buildToolbarMenus() {
 		toolbarMenus[2].push_back(i);
 	}
 
+	toolbarMenus[4].clear();
+	{
+		ToolbarItem i;
+		i.label = "Screenshot";
+		i.circleLabel = "Take";
+		i.iconX = 100;
+		i.iconY = 98;
+		i.iconW = 18;
+		i.iconH = 26;
+		toolbarMenus[4].push_back(i);
+	}
+
 	toolbarMenus[3].clear();
 	if (isRotable()) {
 		ToolbarItem i;
@@ -454,10 +553,10 @@ int BKDocument::processEventsForToolbar() {
 	}
 
 	// wrap menu indexes
-	if (toolbarSelMenu >= 4)
+	if (toolbarSelMenu >= 5)
 		toolbarSelMenu = 0;
 	if (toolbarSelMenu < 0)
-		toolbarSelMenu = 3;
+		toolbarSelMenu = 4;
 	if (toolbarSelMenuItem >= (int)toolbarMenus[toolbarSelMenu].size())
 		toolbarSelMenuItem = 0;
 	if (toolbarSelMenuItem < 0)
@@ -605,6 +704,12 @@ int BKDocument::processEventsForToolbar() {
 			if (r != 0)
 				return r;
 		}
+		// screenshot - hide the toolbar, redraw the page clean, capture on the next update
+		if (toolbarSelMenu == 4 && toolbarSelMenuItem == 0) {
+			mode = BKDOC_VIEW;
+			screenshotPending = true;
+			return BK_CMD_MARK_DIRTY;
+		}
 	}
 
 	// main menu
@@ -626,19 +731,17 @@ void BKDocument::render() {
 	renderContent();
 
 	// flash tip for menu/toolbar on load
-	if (tipFrames > 0 && mode != BKDOC_TOOLBAR) {
+	if (tipFrames > 0 && mode != BKDOC_TOOLBAR && !screenshotPending) {
 		int alpha = 0xff;
 		if (tipFrames <= 32) {
 			alpha = tipFrames*(256/32) - 8;
 		}
 		if (alpha > 0) {
+			unsigned int a = alpha << 24;
 			texUI->bindForDisplay();
-			FZScreen::ambientColor(0x222222 | (alpha << 24));
-			drawPill(480 - 37 - 37 - 8, 272 - 18 - 4,
-				37*2 + 2, 50,
-				6,
-				31, 1);
-			FZScreen::ambientColor(0xffffff | (alpha << 24));
+			drawNeoBox(480 - 37 - 37 - 10, 272 - 18 - 6, 37*2 + 12, 30,
+				(NEO_YELLOW & 0xffffff) | a, 3, 0, (NEO_INK & 0xffffff) | a);
+			FZScreen::ambientColor((NEO_INK & 0xffffff) | a);
 			drawImage(480 - 37 - 2, 272 - 18,
 				37, 18,
 				75, 60);
@@ -649,32 +752,34 @@ void BKDocument::render() {
 	}
 
 	// label
-	if (bannerFrames > 0 && BKUser::options.displayLabels) {
+	if (bannerFrames > 0 && BKUser::options.displayLabels && !screenshotPending) {
 		int y = mode == BKDOC_TOOLBAR ? 10 : 240;
 		int alpha = 0xff;
 		if (bannerFrames <= 32) {
 			alpha = bannerFrames*(256/32) - 8;
 		}
 		if (alpha > 0) {
+			unsigned int a = alpha << 24;
 			texUI->bindForDisplay();
-			FZScreen::ambientColor(0x222222 | (alpha << 24));
-			drawPill(150, y, 180, 20, 6, 31, 1);
+			drawNeoBox(147, y - 2, 186, 24, (NEO_YELLOW & 0xffffff) | a, 2, 3, (NEO_INK & 0xffffff) | a);
 			fontBig->bindForDisplay();
-			FZScreen::ambientColor(0xffffff | (alpha << 24));
-			drawTextHC((char*)banner.c_str(), fontBig, y + 4);
+			FZScreen::ambientColor((NEO_INK & 0xffffff) | a);
+			drawTextHC((char*)banner.c_str(), fontBig, y + 3);
 		}
 	}
 
-	if (mode != BKDOC_TOOLBAR)
+	if (mode != BKDOC_TOOLBAR) {
+		drawNotice();
 		return;
+	}
 
 	// all of the icons menus must have at least one item
 
 	// wrap menu indexes
-	if (toolbarSelMenu >= 4)
+	if (toolbarSelMenu >= 5)
 		toolbarSelMenu = 0;
 	if (toolbarSelMenu < 0)
-		toolbarSelMenu = 3;
+		toolbarSelMenu = 4;
 	if (toolbarSelMenuItem >= (int)toolbarMenus[toolbarSelMenu].size())
 		toolbarSelMenuItem = 0;
 	if (toolbarSelMenuItem < 0)
@@ -684,13 +789,11 @@ void BKDocument::render() {
 
 	// background
 	texUI->bindForDisplay();
-	FZScreen::ambientColor(0xf0222222);
-	drawTPill(20, 272 - 75, 480 - 46, 272, 6, 31, 1);
+	drawNeoBox(18, 272 - 77, 440, 90, NEO_CREAM, 3, 5);
 
 	// context label
-	FZScreen::ambientColor(0xff555555);
-	//drawTPill(25, 272 - 40, 480 - 46 - 11, 40, 6, 31, 1);
-	drawTPill(25, 272 - 30, 480 - 46 - 11, 30, 6, 31, 1);
+	drawNeoRect(21, 272 - 33, 434, 3, NEO_INK);
+	drawNeoRect(21, 272 - 30, 434, 30, NEO_CYAN);
 
 	// selected column - decide if it overflows
 	int ts = toolbarMenus[toolbarSelMenu].size();
@@ -705,19 +808,11 @@ void BKDocument::render() {
 		ts = 5 + init;
 		cs = 5;
 	}
-	// highlight icon column
-	FZScreen::ambientColor(0xf0555555);
-	drawPill(
-		25 + toolbarSelMenu*55,
-		272 - 156 - cs*35+70,
-		40,
-		cs*35+45,
-		6,
-		31, 1
-	);
+	// highlight icon column, from the icon bar up (to the top edge when the "..." shows)
+	int colY = overflow ? 0 : 272 - 156 - cs*35 + 70;
+	drawNeoBox(24 + toolbarSelMenu*55, colY, 46, 237 - colY, NEO_WHITE, 3, 4);
 
 	// selected icon item row
-	FZScreen::ambientColor(0xf0cccccc);
 	int iw = textW((char*)toolbarMenus[toolbarSelMenu][toolbarSelMenuItem].label.c_str(), fontBig);
 	int mw = toolbarMenus[toolbarSelMenu][toolbarSelMenuItem].minWidth;
 	if (iw < mw)
@@ -725,15 +820,10 @@ void BKDocument::render() {
 	int selItemI = overflow ?
 		toolbarSelMenuItem > 4 ? 4 : toolbarSelMenuItem
 		: toolbarSelMenuItem;
-	drawPill(
-		30 + toolbarSelMenu*55,
-		272 - 156 - selItemI*35+40,
-		iw + 10 + 35,
-		30,
-		6, 31, 1);
+	drawNeoBox(29 + toolbarSelMenu*55, 272 - 156 - selItemI*35 + 39, iw + 56, 34, NEO_PINK, 2, 3);
 
 	// button icons
-	FZScreen::ambientColor(0xffcccccc);
+	FZScreen::ambientColor(NEO_INK);
 	int tw = textW((char*)it.circleLabel.c_str(), fontBig);
 	if (it.circleLabel.size() > 0) {
 		// the icon of whichever button selects, as in the menus
@@ -753,20 +843,17 @@ void BKDocument::render() {
 
 	// icon bar
 	texUI2->bindForDisplay();
-	FZScreen::ambientColor(0xffffffff);
+	FZScreen::ambientColor(NEO_INK);
 
 	// menu row
 	drawImage(38 + 0*55, 205, 18, 26, 0, 0);
 	drawImage(38 + 1*55, 205, 18, 26, 19, 53);
 	drawImage(38 + 2*55, 205, 18, 26, 38, 53);
 	drawImage(38 + 3*55, 205, 19, 26, 19, 79);
+	drawImage(38 + 4*55, 205, 18, 26, 100, 98);
 	// selected column
 	for (int i = init, j = 0; i < ts; i++, j++) {
 		const ToolbarItem& it2 = toolbarMenus[toolbarSelMenu][i];
-		if (i == toolbarSelMenuItem)
-			FZScreen::ambientColor(0xff000000);
-		else
-			FZScreen::ambientColor(0xffffffff);
 		if (it2.iconW > 0)
 			drawImage(
 				40 + toolbarSelMenu*55,
@@ -776,11 +863,10 @@ void BKDocument::render() {
 
 	fontBig->bindForDisplay();
 	// item label for selected item
-	FZScreen::ambientColor(0xff000000);
+	FZScreen::ambientColor(NEO_INK);
 	drawText((char*)it.label.c_str(), fontBig, 40 + toolbarSelMenu*55 + 35, 272 - 156 - selItemI*35+48);
 
 	// button labels
-	FZScreen::ambientColor(0xffcccccc);
 	if (it.triangleLabel.size() > 0) {
 		drawText((char*)it.triangleLabel.c_str(), fontBig, 37 + 25, 248);
 	}
@@ -790,8 +876,7 @@ void BKDocument::render() {
 
 	// overflow indicators
 	if (overflow) {
-		FZScreen::ambientColor(0xffffffff);
-		drawText("...", fontBig, 43 + toolbarSelMenu*55, 0);
+		drawText("...", fontBig, 43 + toolbarSelMenu*55, 1);
 		drawText("...", fontBig, 43 + toolbarSelMenu*55, 272 - 92);
 	}
 
@@ -803,5 +888,6 @@ void BKDocument::render() {
 		t = tp;
 	}
 	drawClockAndBattery(t);
+	drawNotice();
 }
 

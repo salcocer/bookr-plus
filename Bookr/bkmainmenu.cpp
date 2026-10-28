@@ -705,11 +705,10 @@ void BKMainMenu::render() {
 	}
 	if (captureButton) {
 		texUI->bindForDisplay();
-		FZScreen::ambientColor(0xf0dddddd);
-		drawPill(150, 126, 180, 20, 6, 31, 1);
+		drawNeoBox(146, 121, 188, 30, NEO_YELLOW, 3, 4);
 		fontBig->bindForDisplay();
-		FZScreen::ambientColor(0xff222222);
-		drawTextHC("Press the new button", fontBig, 130);
+		FZScreen::ambientColor(NEO_INK);
+		drawTextHC("Press the new button", fontBig, 128);
 	}
 }
 

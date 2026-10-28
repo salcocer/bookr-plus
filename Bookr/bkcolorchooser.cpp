@@ -141,6 +141,11 @@ void BKColorChooser::render() {
 	//const float s = 1.0f - (float(svY) / 144.0f);
 	const float h = 359.0f * (float(hueY) / 144.0f);
 	unsigned int hueColor = HSVtoRGBi(h, 1.0f, 1.0f);
+	texUI->bindForDisplay();
+	drawNeoBox(x - 3, y - 3, side + 6, side + 6, NEO_INK, 3, 4);
+	drawNeoBox(x + side + 25 - 3, y - 3, 32 + 6, side + 6, NEO_INK, 3, 4);
+	drawNeoBox(300 - 3, y2 - 3, 100 + 6, side2 + 6, NEO_INK, 3, 4);
+	FZScreen::ambientColor(0xffffffff);
 	hueTex->bindForDisplay();
 	drawImageScale(x + side + 25, y, 32, side, 0, 0, 32, 128);
 
@@ -189,7 +194,7 @@ void BKColorChooser::render() {
 	drawImage(x + side + 25 + 24, y + hueY - 4, 4, 9, 32 + 5, 92);
 
 	fontBig->bindForDisplay();
-	FZScreen::ambientColor(0xffffffff);
+	FZScreen::ambientColor(NEO_INK);
 	drawText("Selected color", fontBig, 300, y + 10);
 }
 

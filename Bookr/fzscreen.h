@@ -271,6 +271,13 @@ public:
 	static int getSpeed();
 
 	static void getTime(int &h, int &m);
+	static void getDateTime(int &year, int &month, int &day, int &h, int &m, int &s);
+	static void makeDir(const char* path);
+	// writes the frame currently on screen to a PNG file, returns 0 or FZ_SCREENSHOT_ERR_*
+	#define FZ_SCREENSHOT_ERR_FORMAT	-1
+	#define FZ_SCREENSHOT_ERR_OPEN		-2
+	#define FZ_SCREENSHOT_ERR_WRITE		-3
+	static int saveScreenshot(const char* path);
 	// microseconds from a free-running clock, for frame timing; wraps around,
 	// so only use differences between two readings
 	static unsigned int getMicros();

@@ -1274,10 +1274,10 @@ void BKPDF::renderContent() {
 
 	if (pageError) {
 		texUI->bindForDisplay();
-		FZScreen::ambientColor(0xf06060ff);
-		drawRect(0, 126, 480, 26, 6, 31, 1);
+		drawNeoRect(0, 123, 480, 32, NEO_INK);
+		drawNeoRect(0, 126, 480, 26, NEO_RED);
 		fontBig->bindForDisplay();
-		FZScreen::ambientColor(0xff222222);
+		FZScreen::ambientColor(NEO_INK);
 		char t[256];
 		snprintf(t, 256, "Error in page %d: %s", ctx->pageno, lastPageError);
 		drawTextHC(t, fontBig, 130);

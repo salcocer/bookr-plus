@@ -139,17 +139,17 @@ void BKPageChooser::render() {
 
 	int textY = 140;
 	int textX = 280;
-	int textXstep = 10;
+	int textXstep = 14;
 	char strNumber[20];
 
 	if(invalidPage) {
 		memcpy(strNumber, "Invalid page Number", 20);
-		FZScreen::ambientColor(0xffffffff);
+		FZScreen::ambientColor(NEO_INK);
 		drawText(strNumber, fontBig, textX-120, textY - 50);
 	}
 
 	memcpy(strNumber, "Go to:", 7);
-	FZScreen::ambientColor(0xffffffff);
+	FZScreen::ambientColor(NEO_INK);
 	drawText(strNumber, fontBig, textX-180, textY);
 
 
@@ -157,16 +157,16 @@ void BKPageChooser::render() {
 	int numOfCurrent = getNumOfDigit(currentPage);
 	char tempStr[2];
 	tempStr[1] = '\0';
+	texUI->bindForDisplay();
+	drawNeoBox(textX - 20 - textXstep*currentPosition - 3, textY - 3, 14, 21, NEO_PINK, 2, 0);
+	fontBig->bindForDisplay();
+	FZScreen::ambientColor(NEO_INK);
 	for(int position = 0; position < numOfDigit; ++position) {
-		FZScreen::ambientColor(0xffffffff);
 		int i = numOfCurrent - 1 - position;
 		if(i >= 0){
 			tempStr[0] = strNumber[i];
 		}else{
 			tempStr[0] = '0';
-		}
-		if(position == currentPosition){
-			FZScreen::ambientColor(0xff0000ff);
 		}
 		drawText(tempStr, fontBig, textX - 20 - textXstep*position, textY);
 	}
@@ -174,7 +174,7 @@ void BKPageChooser::render() {
 	memcpy(strNumber, "of ", 3);
 	snprintf(strNumber+3, 10, "%d", totalPage);
 	memcpy(strNumber+strlen(strNumber), " pages", 7);
-	FZScreen::ambientColor(0xffffffff);
+	FZScreen::ambientColor(NEO_INK);
 	drawText(strNumber, fontBig, textX, textY);
 }
 

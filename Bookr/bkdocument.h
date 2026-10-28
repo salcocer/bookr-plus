@@ -60,11 +60,22 @@ class BKDocument : public BKLayer {
 	int toolbarSelMenu;
 	int toolbarSelMenuItem;
 
-	vector<ToolbarItem> toolbarMenus[4];
+	vector<ToolbarItem> toolbarMenus[5];
 	BKBookmarkList bookmarkList;
 	void buildToolbarMenus();
 
 	int frames;
+
+	// screenshot: taken on the update after the toolbar closes, once the clean page is on screen
+	bool screenshotPending;
+	int takeScreenshot();
+	// centred message that fades out
+	int noticeFrames;
+	bool noticeError;
+	string noticeTitle;
+	string noticeText;
+	void setNotice(const char* title, const char* text, bool error);
+	void drawNotice();
 
 	protected:
 	BKDocument();

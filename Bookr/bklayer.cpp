@@ -169,6 +169,25 @@ void BKLayer::drawRect(int x, int y, int w, int h, int r, int tx, int ty) {
 	FZScreen::drawArray(FZ_SPRITES,FZ_TEXTURE_32BITF|FZ_VERTEX_32BITF|FZ_TRANSFORM_2D,2,0,verts);
 }
 
+void BKLayer::drawNeoRect(int x, int y, int w, int h, unsigned int color) {
+	FZScreen::ambientColor(color);
+	drawRect(x, y, w, h, 6, 31, 1);
+}
+
+// flat box with a solid ink border and a hard ink drop shadow, texUI must be bound.
+// Drawn as non-overlapping strips so translucent (fading) boxes stay even.
+void BKLayer::drawNeoBox(int x, int y, int w, int h, unsigned int fill, int border, int shadow, unsigned int ink) {
+	if (shadow > 0) {
+		drawNeoRect(x + w, y + shadow, shadow, h, ink);
+		drawNeoRect(x + shadow, y + h, w - shadow, shadow, ink);
+	}
+	drawNeoRect(x, y, w, border, ink);
+	drawNeoRect(x, y + h - border, w, border, ink);
+	drawNeoRect(x, y + border, border, h - 2*border, ink);
+	drawNeoRect(x + w - border, y + border, border, h - 2*border, ink);
+	drawNeoRect(x + border, y + border, w - 2*border, h - 2*border, fill);
+}
+
 int BKLayer::textWidthRange(char* t, int n, FZFont* font) {
 	FZCharMetrics* fontChars = font->getMetrics();
 	int baseX = 0;
@@ -325,30 +344,26 @@ void BKLayer::drawDialogFrame(string& title, string& triangleLabel, string& circ
 	int tw = textW(t, fontBig);
 
 	texUI->bindForDisplay();
-	FZScreen::ambientColor(0xf0222222);
 	// back
-	drawTPill(20, 20 + scrY, 480 - 46, 272, 6, 31, 1);
+	drawNeoBox(18, 16 + scrY, 440, 272, NEO_CREAM, 3, 5);
 	// title
-	FZScreen::ambientColor(0xffaaaaaa);
-	drawPill(25, 25 + scrY, 480 - 46 - 10, 20, 6, 31, 1);
+	drawNeoRect(21, 19 + scrY, 434, 28, NEO_YELLOW);
+	drawNeoRect(21, 47 + scrY, 434, 3, NEO_INK);
 	// context label
-	FZScreen::ambientColor(0xff555555);
-	drawTPill(25, 272 - 30 + scrY, 480 - 46 - 11, 30, 6, 31, 1);
+	drawNeoRect(21, 239 + scrY, 434, 3, NEO_INK);
+	drawNeoRect(21, 242 + scrY, 434, 30, NEO_CYAN);
 	// icons
-	FZScreen::ambientColor(0xff000000);
-//drawImage(430, 30 + scrY, BK_IMG_TRIANGLE_XSIZE, BK_IMG_TRIANGLE_YSIZE, BK_IMG_TRIANGLE_X, BK_IMG_TRIANGLE_Y); tri!
-//	drawImage(430, 29 + scrY, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y); // close handle
+	FZScreen::ambientColor(NEO_INK);
 	switch (BKUser::controls.select) {
 	case FZ_REPS_CROSS:
-		drawImage(430, 29 + scrY, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y);
+		drawImage(428, 23 + scrY, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y);
 		break;
 	case FZ_REPS_CIRCLE:
 	default:
-		drawImage(430, 29 + scrY, BK_IMG_CROSS_XSIZE, BK_IMG_CROSS_YSIZE, BK_IMG_CROSS_X, BK_IMG_CROSS_Y);
+		drawImage(428, 25 + scrY, BK_IMG_CROSS_XSIZE, BK_IMG_CROSS_YSIZE, BK_IMG_CROSS_X, BK_IMG_CROSS_Y);
 		break;
 	}
 
-	FZScreen::ambientColor(0xffcccccc);
 	// circle or other context icon
 	if (flags & BK_MENU_ITEM_USE_LR_ICON) {
 		drawImage(480 - tw - 65, 248 + scrY, BK_IMG_LRARROWS_XSIZE, BK_IMG_LRARROWS_YSIZE, BK_IMG_LRARROWS_X, BK_IMG_LRARROWS_Y);
@@ -362,21 +377,17 @@ void BKLayer::drawDialogFrame(string& title, string& triangleLabel, string& circ
 			drawImage(480 - tw - 65, 248 + scrY, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y);
 			break;
 		}
-//		drawImage(480 - tw - 65, 248 + scrY, BK_IMG_CROSS_XSIZE, BK_IMG_CROSS_YSIZE, BK_IMG_CROSS_X, BK_IMG_CROSS_Y);
 	}
 	if (triangleLabel.size() > 0 || flags & BK_MENU_ITEM_OPTIONAL_TRIANGLE_LABEL) {
-		//drawImage(37, 248 + scrY, 20, 20, 107, 5);
-//		drawImage(37, 248 + scrY, BK_IMG_TRIANGLE_XSIZE, BK_IMG_TRIANGLE_YSIZE, BK_IMG_TRIANGLE_X, BK_IMG_TRIANGLE_Y);
 		drawImage(37, 248 + scrY, BK_IMG_TRIANGLE_XSIZE, BK_IMG_TRIANGLE_YSIZE, BK_IMG_TRIANGLE_X, BK_IMG_TRIANGLE_Y);
 	}
 
 	fontBig->bindForDisplay();
 
 	// title
-	FZScreen::ambientColor(0xffffffff);
-	drawText((char*)title.c_str(), fontBig, 31, 28 + scrY);
+	FZScreen::ambientColor(NEO_INK);
+	drawText((char*)title.c_str(), fontBig, 31, 25 + scrY);
 	// labels
-	FZScreen::ambientColor(0xffcccccc);
 	if (triangleLabel.size() > 0) {
 		drawText((char*)triangleLabel.c_str(), fontBig, 37 + 25, 248 + scrY);
 	}
@@ -386,6 +397,7 @@ void BKLayer::drawDialogFrame(string& title, string& triangleLabel, string& circ
 void BKLayer::drawMenu(string& title, string& triangleLabel, vector<BKMenuItem>& items) {
 	int selPos = selItem - topItem;
 	int scrY = 0;
+	int lh = fontBig->getLineHeight();
 
 	if (selPos < 0) {
 		topItem += selPos;
@@ -406,73 +418,60 @@ void BKLayer::drawMenu(string& title, string& triangleLabel, vector<BKMenuItem>&
 	drawDialogFrame(title, tl, items[selItem].circleLabel, items[selItem].flags);
 
 	texUI->bindForDisplay();
-	// folder icons
-	FZScreen::ambientColor(0xffffffff);
-	for (int i = 0; i < 8; ++i) {
-		if (i + topItem == selItem)
-			continue;
-		if ((60 + (i+1)*fontBig->getLineHeight()) > 250)
-			break;
-		if ((i + topItem) >= (int)(items.size()))
-			break;
-		if (items[i + topItem].flags & BK_MENU_ITEM_FOLDER) {
-			//drawImage(40, 60 + i*fontBig->getLineHeight() + scrY, 20, 20, 84, 52);
-			drawImage(40, 60 + i*fontBig->getLineHeight() + scrY, 20, 20, 58, 81);
-		}
-	}
 	// selected item
-	int wSelBox = scrollbar ? 480 - 46 - 10 - 24: 480 - 46 - 10;
-	drawPill(25, 57 + scrY + selPos*fontBig->getLineHeight(), wSelBox, 19, 6, 31, 1);
-	if (items[selItem].flags & BK_MENU_ITEM_FOLDER) {
-		FZScreen::ambientColor(0xff000000);
-		//drawImage(40, 60 + scrY + selPos*fontBig->getLineHeight(), 20, 20, 84, 52);
-		drawImage(40, 60 + scrY + selPos*fontBig->getLineHeight(), BK_IMG_FOLDER_XSIZE, BK_IMG_FOLDER_YSIZE, BK_IMG_FOLDER_X, BK_IMG_FOLDER_Y);
-	}
+	int wSelBox = scrollbar ? 400 : 424;
+	drawNeoBox(28, 57 + scrY + selPos*lh, wSelBox, 22, NEO_PINK, 2, 3);
 
 	// scrollbar
 	if (scrollbar) {
 		float barh = 8.0f / float(items.size());
-		barh *= 173.0f;
+		barh *= 170.0f;
 		if (barh < 15.0f)
 			barh = 15.0f;
 		float trel = float(topItem) / float(items.size());
-		trel *= 173.0f;
-		FZScreen::ambientColor(0xff555555);
-		drawPill(436, 57, 12, 173, 6, 31, 1);
-		FZScreen::ambientColor(0xffaaaaaa);
-		drawPill(436, 57 + int(trel), 12, int(barh), 6, 31, 1);
+		trel *= 170.0f;
+		if (trel + barh > 170.0f)
+			trel = 170.0f - barh;
+		drawNeoBox(434, 56, 18, 178, NEO_WHITE, 2, 0);
+		drawNeoRect(438, 60 + int(trel), 10, int(barh), NEO_INK);
 	}
 
 	// color rects items
 	for (int i = 0; i < 8; ++i) {
-		if ((60 + (i+1)*fontBig->getLineHeight()) > 250)
+		if ((60 + (i+1)*lh) > 250)
 			break;
 		if ((i + topItem) >= (int)(items.size()))
 			break;
 		if (items[i + topItem].flags & BK_MENU_ITEM_COLOR_RECT) {
 			int tw = textW((char*)items[i + topItem].label.c_str(), fontBig);
-			FZScreen::ambientColor(items[i + topItem].bgcolor | 0xff000000);
-			drawRect(40 + 25 + tw + 10, 60 + i*fontBig->getLineHeight() + scrY, 30, 15, 6, 31, 1);
-			FZScreen::ambientColor(items[i + topItem].fgcolor | 0xff000000);
-			drawRect(40 + 25 + tw + 15, 60 + i*fontBig->getLineHeight() + scrY + 4, 30, 15, 6, 31, 1);
+			drawNeoBox(40 + 25 + tw + 10, 60 + i*lh + scrY, 30, 15, items[i + topItem].bgcolor | 0xff000000, 2, 0);
+			drawNeoBox(40 + 25 + tw + 15, 60 + i*lh + scrY + 4, 30, 15, items[i + topItem].fgcolor | 0xff000000, 2, 0);
+		}
+	}
+
+	// folder icons
+	FZScreen::ambientColor(NEO_INK);
+	for (int i = 0; i < 8; ++i) {
+		if ((60 + (i+1)*lh) > 250)
+			break;
+		if ((i + topItem) >= (int)(items.size()))
+			break;
+		if (items[i + topItem].flags & BK_MENU_ITEM_FOLDER) {
+			drawImage(40, 60 + i*lh + scrY, BK_IMG_FOLDER_XSIZE, BK_IMG_FOLDER_YSIZE, BK_IMG_FOLDER_X, BK_IMG_FOLDER_Y);
 		}
 	}
 
 	fontBig->bindForDisplay();
 
-	FZScreen::ambientColor(0xffffffff);
 	// contents
+	FZScreen::ambientColor(NEO_INK);
 	for (int i = 0; i < 8; ++i) {
-		if (i + topItem == selItem)
-			continue;
-		if ((60 + (i+1)*fontBig->getLineHeight()) > 250)
+		if ((60 + (i+1)*lh) > 250)
 			break;
 		if ((i + topItem) >= (int)(items.size()))
 			break;
-		drawText((char*)items[i + topItem].label.c_str(), fontBig, 40 + 25, 60 + i*fontBig->getLineHeight() + scrY);
+		drawText((char*)items[i + topItem].label.c_str(), fontBig, 40 + 25, 60 + i*lh + scrY);
 	}
-	FZScreen::ambientColor(0xff000000);
-	drawText((char*)items[selItem].label.c_str(), fontBig, 40 + 25, 60 + scrY + selPos*fontBig->getLineHeight());
 }
 
 static int countLines(string& t) {
@@ -491,40 +490,37 @@ void BKLayer::drawPopup(string& text, string& title, int bg1, int bg2, int fg) {
 	int h = 25 + 25*l;
 	int y = (272 - h) /2;
 	// back
-	FZScreen::ambientColor(bg1);
-	drawPill(40, y, 480 - 86, h, 6, 31, 1);
+	drawNeoBox(30, y - 3, 420, h + 16, bg1, 3, 5);
 	// title
-	FZScreen::ambientColor(bg2);
-	drawPill(45, 5 + y, 480 - 86 - 10, 20, 6, 31, 1);
+	drawNeoRect(33, y, 414, 27, bg2);
+	drawNeoRect(33, y + 27, 414, 3, NEO_INK);
 	// icons
-	FZScreen::ambientColor(bg1|0xff000000);
-//	drawImage(410, 9 + y, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y);
+	FZScreen::ambientColor(NEO_INK);
 	switch (BKUser::controls.select) {
 	case FZ_REPS_CIRCLE:
-		drawImage(410, 9 + y, BK_IMG_CROSS_XSIZE, BK_IMG_CROSS_YSIZE, BK_IMG_CROSS_X, BK_IMG_CROSS_Y);
+		drawImage(420, 5 + y, BK_IMG_CROSS_XSIZE, BK_IMG_CROSS_YSIZE, BK_IMG_CROSS_X, BK_IMG_CROSS_Y);
 		break;
 	case FZ_REPS_CROSS:
 	default:
-		drawImage(410, 9 + y, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y);
+		drawImage(420, 4 + y, BK_IMG_CIRCLE_XSIZE, BK_IMG_CIRCLE_YSIZE, BK_IMG_CIRCLE_X, BK_IMG_CIRCLE_Y);
 		break;
 	}
 
 	fontBig->bindForDisplay();
 
 	FZScreen::ambientColor(fg);
-	drawText((char*)title.c_str(), fontBig, 51, y + 9);
-	drawText((char*)text.c_str(), fontBig, 51, y + 35);
+	drawText((char*)title.c_str(), fontBig, 43, y + 6);
+	drawText((char*)text.c_str(), fontBig, 43, y + 37);
 }
 
 void BKLayer::drawClockAndBattery(string& extra) {
 	texUI->bindForDisplay();
-	FZScreen::ambientColor(0xffbbbbbb);
-	drawImage(350, 226, BK_IMG_BATTERY_XSIZE, BK_IMG_BATTERY_YSIZE, BK_IMG_BATTERY_X, BK_IMG_BATTERY_Y);
+	FZScreen::ambientColor(NEO_INK);
+	drawImage(357, 226, BK_IMG_BATTERY_XSIZE, BK_IMG_BATTERY_YSIZE, BK_IMG_BATTERY_X, BK_IMG_BATTERY_Y);
 	drawImage(405, 222, BK_IMG_CLOCK_XSIZE, BK_IMG_CLOCK_YSIZE, BK_IMG_CLOCK_X, BK_IMG_CLOCK_Y);
-//	drawImage(292, 224, BK_IMG_MEMORY_XSIZE, BK_IMG_MEMORY_YSIZE, BK_IMG_MEMORY_X, BK_IMG_MEMORY_Y);
-	drawImage(287, 224, BK_IMG_MEMORY_XSIZE, BK_IMG_MEMORY_YSIZE, BK_IMG_MEMORY_X, BK_IMG_MEMORY_Y);
+	drawImage(298, 224, BK_IMG_MEMORY_XSIZE, BK_IMG_MEMORY_YSIZE, BK_IMG_MEMORY_X, BK_IMG_MEMORY_Y);
 	fontSmall->bindForDisplay();
-	FZScreen::ambientColor(0xffbbbbbb);
+	FZScreen::ambientColor(NEO_INK);
 	int ew = textW((char*)extra.c_str(), fontSmall);
 	drawText((char*)extra.c_str(), fontSmall, 480 - 30 - ew, 205);
 	int h = 0, m = 0;
@@ -542,11 +538,10 @@ void BKLayer::drawClockAndBattery(string& extra) {
 	snprintf(t3, 20, "%d/%dM", mem / (1024*1024), FZScreen::getFreeMemory() / (1024*1024));
 	char t4[20];
 	snprintf(t4, 20, "%dMHz", speed);
-	drawText(t1, fontSmall, 425, 224);
-	drawText(t2, fontSmall, 370, 224);
-	drawText(t3, fontSmall, 310, 224);
-//	drawText(t4, fontSmall, 240, 224);
-	drawText(t4, fontSmall, 235, 224);
+	drawText(t1, fontSmall, 423, 224);
+	drawText(t2, fontSmall, 375, 224);
+	drawText(t3, fontSmall, 315, 224);
+	drawText(t4, fontSmall, 298, 205);
 }
 
 void BKLayer::menuCursorUpdate(unsigned int buttons, int max) {
