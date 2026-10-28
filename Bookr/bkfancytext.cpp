@@ -18,8 +18,11 @@
  */
 
 #include <list>
+#include <ctype.h>
+#include <stdlib.h>
 using namespace std;
 #include "bkfancytext.h"
+#include "bkutf8.h"
 
 BKFancyText::BKFancyText() : lines(0), nLines(0), topLine(0), maxY(0), font(0), rotation(0), runs(0), nRuns(0), holdScroll(false) {
 	lastFontSize = BKUser::options.txtSize;
@@ -207,6 +210,83 @@ struct BKStrIt {
 	}
 };
 
+// named character references that books use, beyond numeric ones
+struct BKEntity {
+	const char* name;
+	unsigned int cp;
+};
+static const BKEntity entities[] = {
+	{ "amp", '&' }, { "lt", '<' }, { "gt", '>' }, { "quot", '"' }, { "apos", '\'' },
+	{ "nbsp", 0xA0 }, { "shy", 0xAD }, { "mdash", 0x2014 }, { "ndash", 0x2013 },
+	{ "hellip", 0x2026 }, { "lsquo", 0x2018 }, { "rsquo", 0x2019 }, { "sbquo", 0x201A },
+	{ "ldquo", 0x201C }, { "rdquo", 0x201D }, { "bdquo", 0x201E }, { "laquo", 0xAB },
+	{ "raquo", 0xBB }, { "lsaquo", 0x2039 }, { "rsaquo", 0x203A }, { "bull", 0x2022 },
+	{ "middot", 0xB7 }, { "dagger", 0x2020 }, { "Dagger", 0x2021 }, { "copy", 0xA9 },
+	{ "reg", 0xAE }, { "trade", 0x2122 }, { "euro", 0x20AC }, { "pound", 0xA3 },
+	{ "cent", 0xA2 }, { "yen", 0xA5 }, { "sect", 0xA7 }, { "para", 0xB6 },
+	{ "deg", 0xB0 }, { "plusmn", 0xB1 }, { "times", 0xD7 }, { "divide", 0xF7 },
+	{ "frac14", 0xBC }, { "frac12", 0xBD }, { "frac34", 0xBE }, { "ordf", 0xAA },
+	{ "ordm", 0xBA }, { "iexcl", 0xA1 }, { "iquest", 0xBF },
+	{ "Agrave", 0xC0 }, { "Aacute", 0xC1 }, { "Acirc", 0xC2 }, { "Atilde", 0xC3 },
+	{ "Auml", 0xC4 }, { "Aring", 0xC5 }, { "AElig", 0xC6 }, { "Ccedil", 0xC7 },
+	{ "Egrave", 0xC8 }, { "Eacute", 0xC9 }, { "Ecirc", 0xCA }, { "Euml", 0xCB },
+	{ "Igrave", 0xCC }, { "Iacute", 0xCD }, { "Icirc", 0xCE }, { "Iuml", 0xCF },
+	{ "Ntilde", 0xD1 }, { "Ograve", 0xD2 }, { "Oacute", 0xD3 }, { "Ocirc", 0xD4 },
+	{ "Otilde", 0xD5 }, { "Ouml", 0xD6 }, { "Oslash", 0xD8 }, { "Ugrave", 0xD9 },
+	{ "Uacute", 0xDA }, { "Ucirc", 0xDB }, { "Uuml", 0xDC }, { "szlig", 0xDF },
+	{ "agrave", 0xE0 }, { "aacute", 0xE1 }, { "acirc", 0xE2 }, { "atilde", 0xE3 },
+	{ "auml", 0xE4 }, { "aring", 0xE5 }, { "aelig", 0xE6 }, { "ccedil", 0xE7 },
+	{ "egrave", 0xE8 }, { "eacute", 0xE9 }, { "ecirc", 0xEA }, { "euml", 0xEB },
+	{ "igrave", 0xEC }, { "iacute", 0xED }, { "icirc", 0xEE }, { "iuml", 0xEF },
+	{ "ntilde", 0xF1 }, { "ograve", 0xF2 }, { "oacute", 0xF3 }, { "ocirc", 0xF4 },
+	{ "otilde", 0xF5 }, { "ouml", 0xF6 }, { "oslash", 0xF8 }, { "ugrave", 0xF9 },
+	{ "uacute", 0xFA }, { "ucirc", 0xFB }, { "uuml", 0xFC }, { "yuml", 0xFF },
+	{ "OElig", 0x152 }, { "oelig", 0x153 }, { "Scaron", 0x160 }, { "scaron", 0x161 },
+	{ 0, 0 }
+};
+
+#define BK_ENTITY_NONE -2
+// The character reference at it ("&amp;", "&#233;", "&#x2019;"): moves past
+// it and returns its glyph slot, -1 for one to drop, or BK_ENTITY_NONE
+// (not moved) when the & does not start a reference
+static int parseEntity(BKStrIt& it) {
+	char name[16];
+	int k = 0;
+	char* q = it.p + 1;
+	int j = it.i + 1;
+	while (j < it.n && k < 15 && *q != ';') {
+		if (!isalnum((unsigned char)*q) && *q != '#')
+			return BK_ENTITY_NONE;
+		name[k++] = *q;
+		++q;
+		++j;
+	}
+	if (j >= it.n || *q != ';' || k == 0)
+		return BK_ENTITY_NONE;
+	name[k] = 0;
+	unsigned int cp = 0;
+	if (name[0] == '#') {
+		if (name[1] == 'x' || name[1] == 'X')
+			cp = strtoul(name + 2, 0, 16);
+		else
+			cp = strtoul(name + 1, 0, 10);
+	} else {
+		for (const BKEntity* e = entities; e->name; e++) {
+			if (strcmp(name, e->name) == 0) {
+				cp = e->cp;
+				break;
+			}
+		}
+	}
+	if (cp == 0)
+		return BK_ENTITY_NONE;
+	it.p += k + 2;
+	it.i += k + 2;
+	if (cp == 0xAD)		// soft hyphen, there is no hyphenation
+		return -1;
+	return bkSlotForUnicode(cp);
+}
+
 char* BKFancyText::parseHTML(BKFancyText* r, char* in, int n) {
 
 	// detokenize html text
@@ -215,7 +295,7 @@ char* BKFancyText::parseHTML(BKFancyText* r, char* in, int n) {
 	// <br*> --> run break, LF
 	// <*> --> strip
 	// ascii < 32 --> strip
-	// &*; --> to do...
+	// &*; --> its character
 
 	list<BKRun> tempRuns;
 	BKRun run;
@@ -249,6 +329,11 @@ char* BKFancyText::parseHTML(BKFancyText* r, char* in, int n) {
 
 			// the continuation for the next run
 			run.lineBreak = true;
+			// start the new run with a blank: reflow ends the previous line
+			// after the first char of a new run, as a text file's runs start
+			// with their newline. Without it the run's first letter moved up.
+			*q = 32; ++q; ++i;
+			lastBlank = true;
 			continue;
 		}
 		if (it.matches("<h") ) {
@@ -262,6 +347,11 @@ char* BKFancyText::parseHTML(BKFancyText* r, char* in, int n) {
 
 			// the continuation for the next run
 			run.lineBreak = true;
+			// start the new run with a blank: reflow ends the previous line
+			// after the first char of a new run, as a text file's runs start
+			// with their newline. Without it the run's first letter moved up.
+			*q = 32; ++q; ++i;
+			lastBlank = true;
 			/**q = '>'; ++q;
 			*q = '>'; ++q;
 			*q = '>'; ++q;
@@ -281,6 +371,11 @@ char* BKFancyText::parseHTML(BKFancyText* r, char* in, int n) {
 
 			// the continuation for the next run
 			run.lineBreak = true;
+			// start the new run with a blank: reflow ends the previous line
+			// after the first char of a new run, as a text file's runs start
+			// with their newline. Without it the run's first letter moved up.
+			*q = 32; ++q; ++i;
+			lastBlank = true;
 			continue;
 		}
 		if (it.matches("<li") || it.matches("<dt") || it.matches("<dl")) {
@@ -294,6 +389,11 @@ char* BKFancyText::parseHTML(BKFancyText* r, char* in, int n) {
 
 			// the continuation for the next run
 			run.lineBreak = true;
+			// start the new run with a blank: reflow ends the previous line
+			// after the first char of a new run, as a text file's runs start
+			// with their newline. Without it the run's first letter moved up.
+			*q = 32; ++q; ++i;
+			lastBlank = true;
 			*q = '*'; ++q;
 			*q = ' '; ++q;
 			i += 2;
@@ -303,7 +403,15 @@ char* BKFancyText::parseHTML(BKFancyText* r, char* in, int n) {
 			it.skipTo(">");
 			continue;
 		}
-		unsigned char c = it.forward();
+		unsigned char c;
+		if (it.matches("&")) {
+			int slot = parseEntity(it);
+			if (slot == -1)
+				continue;
+			c = slot == BK_ENTITY_NONE ? it.forward() : (unsigned char)slot;
+		} else {
+			c = it.forward();
+		}
 		if (!isBlank(c) && c < 32)			// skip non-blanks, non-printables
 			continue;
 		if (isBlank(c) && !lastBlank) {		// consolidate 1 to N blanks into a single space

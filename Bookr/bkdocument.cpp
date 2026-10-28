@@ -22,6 +22,7 @@
 #include "bkpdf.h"
 #include "bkdjvu.h"
 #include "bkpalmdoc.h"
+#include "bkepub.h"
 #include "bkplaintext.h"
 
 BKDocument* BKDocument::create(string& filePath) {
@@ -32,6 +33,8 @@ BKDocument* BKDocument::create(string& filePath) {
 		doc = BKDJVU::create(filePath);
 	} else if (BKPalmDoc::isPalmDoc(filePath)) {
 		doc = BKPalmDoc::create(filePath);
+	} else if (BKEPub::isEPub(filePath)) {
+		doc = BKEPub::create(filePath);
 	} else {
 		doc = BKPlainText::create(filePath);
 	}

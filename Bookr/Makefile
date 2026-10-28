@@ -3,7 +3,7 @@
 PSP_EBOOT_ICON=data/icon0.png
 TARGET=bookr
 OBJS:=bkpdf.o bklayer.o bkdocument.o bkmainmenu.o bkfilechooser.o bkpagechooser.o bkcolorschememanager.o bklogo.o bkuser.o bookr.o bkbookmark.o bkpopup.o bkcolorchooser.o bkdjvu.o
-OBJS+=bkfancytext.o bkplaintext.o bkpalmdoc.o palmdoc/palm.o
+OBJS+=bkfancytext.o bkplaintext.o bkpalmdoc.o bkepub.o bkutf8.o palmdoc/palm.o
 OBJS+=fzrefcount.o fzinstreammem.o fzinstreamstd.o fzimage.o fzimagepng.o fztexture.o fzfont.o fzscreenpsp.o fzscreencommon.o
 OBJS+=tinystr.o tinyxmlerror.o tinyxml.o tinyxmlparser.o bkmemcpy.o
 OBJS+=res_uifont.o res_txtfont.o res_uitex.o res_logo.o res_uitex2.o
