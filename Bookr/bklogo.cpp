@@ -54,7 +54,7 @@ void BKLogo::render() {
 	FZScreen::blendFunc(FZ_ADD, FZ_SRC_ALPHA, FZ_ONE_MINUS_SRC_ALPHA);
 	texLogo->bindForDisplay();
 	drawImage(480/2 - 128, 24, 256, 128, 0, 0);
-	char formats[] = "PDF - EPUB - TXT - PalmDoc - DJVU - CHM - HTML";
+	char formats[] = "PDF - CBZ - EPUB - TXT - PalmDoc - DJVU - CHM - HTML";
 	int fw = textW(formats, fontBig);
 	texUI->bindForDisplay();
 	drawNeoBox((480 - fw)/2 - 12, 172, fw + 24, 26, NEO_WHITE, 2, 3);
