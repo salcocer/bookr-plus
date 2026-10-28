@@ -3,13 +3,13 @@
 A PDF and e-book reader for the Sony PSP, based on **Bookr V8.1**. Bookr Plus
 makes the 2009 source build with today's PSP toolchain and adds a handful of
 reading improvements: smooth panning and zoom, margin trimming for scanned
-comics, a right-to-left comic mode, EPUB books, UTF-8 text files, zoom for
-text files, screenshots saved to the Memory Stick, a neobrutalist interface,
-and use of the PSP-2000/3000's extra memory.
+comics, a right-to-left comic mode, CBZ comics, EPUB books, UTF-8 text files,
+zoom for text files, screenshots saved to the Memory Stick, a neobrutalist
+interface, and use of the PSP-2000/3000's extra memory.
 
 It has been tested on a **PSP-3000 running ARK-4 custom firmware**.
 
-Bookr Plus reads plain text, PDF, EPUB, CHM, HTML, DjVu and
+Bookr Plus reads plain text, PDF, CBZ, EPUB, CHM, HTML, DjVu and
 PalmDoc/Mobipocket (EPUB and Mobipocket without DRM). The original V8.1
 readme is kept in [README.original.md](README.original.md).
 
@@ -184,6 +184,31 @@ Turning Comic mode off restores the rotation and trim setting it replaced.
 Bookmarks and the last view remember Comic mode, and still open at the exact
 saved position. The start corner is worked out from the page's rotation, so
 it stays right if you rotate the page while Comic mode is on.
+
+### CBZ comics
+
+`.cbz` files (a ZIP archive of page images) open in the same viewer as PDFs,
+so zoom, panning, **Trim margins**, **Comic mode**, **Fast images**,
+bookmarks, the last view and screenshots all work on them.
+
+- Pages are the archive's JPEG and PNG images in natural file name order
+  (`page2` before `page10`). Other files, such as `ComicInfo.xml`, and the
+  `__MACOSX` and `._` files macOS adds when zipping, are skipped.
+- A comic opens at fit width, and the zoom stays relative to each page's
+  width, so pages of different sizes (often the cover) still fill the screen
+  the same way.
+- Large pages are decoded at 1/2, 1/4 or 1/8 size, which libjpeg does while
+  decoding, so that the page and the renderer's copy of it fit in the memory
+  that is free. A 4000 × 6000 page opens on a PSP-3000.
+- A page that can't be read shows "Error in page N: …" with the reason, and
+  the other pages still open.
+
+How it works (`Bookr/bkcbz.cpp`): each page is decoded with libjpeg or
+libpng, already linked for the PDF engine, and wrapped in a MuPDF page that
+holds a single image node, scaled to one unit per pixel. The PDF viewer
+draws it with MuPDF's renderer like an image in a PDF, so none of the viewer
+code had to be duplicated. The ZIP reading is shared with EPUB
+(`Bookr/bkzip.cpp`).
 
 ### Colour pages in image PDFs
 
@@ -381,9 +406,11 @@ Bookr does with `PSP_HEAP_SIZE_KB(-7*1024)`.
   page at full resolution would need a separate export.
 - **Fast images** mode is still limited to 2x zoom. The extra memory could
   raise that.
-- **CBZ** comics (or image folders) are a possible next step. Comic mode
-  already handles right-to-left reading for PDFs, and the EPUB code already
-  reads ZIP archives.
+- **CBZ** pages must be JPEG or PNG. WebP pages, used by some newer comics,
+  are not supported, and a PNG page larger than the memory allows can't be
+  shrunk while decoding the way a JPEG can. **CBR** (RAR) comics are not
+  supported, since RAR's decompression licence is not compatible with the GPL;
+  repacking them as CBZ on a computer works.
 
 ## Credits
 
