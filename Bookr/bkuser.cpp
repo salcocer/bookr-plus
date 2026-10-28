@@ -64,6 +64,8 @@ void BKUser::setDefaultControls() {
 	controls.resume				= FZ_REPS_START;
 }
 
+const char* BKUser::panSpeedLabels[BK_PAN_SPEED_LEVELS] = { "Very slow", "Slow", "Normal", "Fast", "Very fast" };
+
 void BKUser::setDefaultOptions() {
 	// set default options
 	options.pdfFastScroll = false;
@@ -90,6 +92,8 @@ void BKUser::setDefaultOptions() {
 	options.pspMenuSpeed = 0;
 	options.displayLabels = true;
 	options.pdfInvertColors = false;
+	options.pdfDPadSpeed = BK_PAN_SPEED_NORMAL;
+	options.pdfAnalogSpeed = BK_PAN_SPEED_NORMAL;
 	options.lastFolder = FZScreen::basePath();
 	options.lastFontFolder = FZScreen::basePath();
 	options.loadLastFile = false;
@@ -145,6 +149,8 @@ void BKUser::save() {
 	fprintf(f, "\t\t<set option=\"lastFontFolder\" value=\"%s\" />\n", options.lastFontFolder.c_str());
 	fprintf(f, "\t\t<set option=\"loadLastFile\" value=\"%d\" />\n", options.loadLastFile ? 1 : 0);
 	fprintf(f, "\t\t<set option=\"pdfFastScroll\" value=\"%d\" />\n", options.pdfFastScroll ? 1 : 0);
+	fprintf(f, "\t\t<set option=\"pdfDPadSpeed\" value=\"%d\" />\n", options.pdfDPadSpeed);
+	fprintf(f, "\t\t<set option=\"pdfAnalogSpeed\" value=\"%d\" />\n", options.pdfAnalogSpeed);
 	fprintf(f, "\t\t<set option=\"txtWrapCR\" value=\"%d\" />\n", options.txtWrapCR);
 	fprintf(f, "\t\t<set option=\"browserTextSize\" value=\"%d\" />\n", options.browserTextSize);
 	fprintf(f, "\t\t<set option=\"browserDisplayMode\" value=\"%d\" />\n", options.browserDisplayMode);
@@ -266,6 +272,8 @@ void BKUser::load() {
 			else if (strncmp(option, "lastFontFolder",  128) == 0) options.lastFontFolder  = value;
 			else if (strncmp(option, "loadLastFile",    128) == 0) options.loadLastFile    = atoi(value) != 0;
 			else if (strncmp(option, "pdfFastScroll",   128) == 0) options.pdfFastScroll   = atoi(value) != 0;
+			else if (strncmp(option, "pdfDPadSpeed",    128) == 0) options.pdfDPadSpeed    = atoi(value);
+			else if (strncmp(option, "pdfAnalogSpeed",  128) == 0) options.pdfAnalogSpeed  = atoi(value);
 			else if (strncmp(option, "txtWrapCR",       128) == 0) options.txtWrapCR       = atoi(value);
 
 			else if (strncmp(option, "browserTextSize",      128) == 0) options.browserTextSize      = atoi(value);
@@ -313,6 +321,15 @@ void BKUser::load() {
 			operror = true;
 		}
 		thisColor++;
+	}
+
+	if (options.pdfDPadSpeed < 0 || options.pdfDPadSpeed >= BK_PAN_SPEED_LEVELS) {
+		options.pdfDPadSpeed = BK_PAN_SPEED_NORMAL;
+		operror = true;
+	}
+	if (options.pdfAnalogSpeed < 0 || options.pdfAnalogSpeed >= BK_PAN_SPEED_LEVELS) {
+		options.pdfAnalogSpeed = BK_PAN_SPEED_NORMAL;
+		operror = true;
 	}
 
 	if (options.pspSpeed < 0 || options.pspSpeed > 6) {

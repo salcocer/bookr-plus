@@ -141,6 +141,10 @@ class BKDocument : public BKLayer {
 	// pixels per step while a zoom button is held, and render once it is
 	// released.
 	virtual bool hasFineZoom() { return false; }
+	// Timed panning - the view gets screenUp/Down/Left/Right on every frame a
+	// direction is held, not just on the press and the repeats, and times the
+	// hold itself
+	virtual bool hasTimedPanning() { return false; }
 	virtual int fineZoom(int pixels) { return 0; }
 	virtual int finishFineZoom() { return 0; }
 

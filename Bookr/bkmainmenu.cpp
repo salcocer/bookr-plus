@@ -53,23 +53,25 @@
 #define OPTIONS_MENU_ITEM_SET_CONTROL_STYLE		1
 #define OPTIONS_MENU_ITEM_PDF_FAST_IMAGES		2
 #define OPTIONS_MENU_ITEM_PDF_INVERT_COLORS		3
-#define OPTIONS_MENU_ITEM_PLAIN_CHOOSE_FONT		4
-#define OPTIONS_MENU_ITEM_PLAIN_FONT_SIZE		5
-#define OPTIONS_MENU_ITEM_PLAIN_SET_LINE_HEIGHT	6
-#define OPTIONS_MENU_ITEM_PLAIN_JUSTIFY_TEXT	7
-#define OPTIONS_MENU_ITEM_PLAIN_WRAP_TEXT		8
-#define OPTIONS_MENU_ITEM_BROWSER_TEXTSIZE		9
-#define OPTIONS_MENU_ITEM_BROWSER_DISPLAYMODE	10
-#define OPTIONS_MENU_ITEM_BROWSER_ENABLEFLASH	11
-#define OPTIONS_MENU_ITEM_BROWSER_INTERFACEMODE	12
-#define OPTIONS_MENU_ITEM_BROWSER_CONFIRMEXIT	13
-#define OPTIONS_MENU_ITEM_BROWSER_SHOWCURSOR	14
-#define OPTIONS_MENU_ITEM_COLOR_SCHEMES			15
-#define OPTIONS_MENU_ITEM_DISPLAY_LABELS		16
-#define OPTIONS_MENU_ITEM_LOAD_LAST_FILE		17
-#define OPTIONS_MENU_ITEM_CPU_BUS_SPEED			18
-#define OPTIONS_MENU_ITEM_CPU_MENU_SPEED		19
-#define OPTIONS_MENU_ITEM_CLEAR_BOOKMARKS		20
+#define OPTIONS_MENU_ITEM_PDF_DPAD_SPEED		4
+#define OPTIONS_MENU_ITEM_PDF_ANALOG_SPEED		5
+#define OPTIONS_MENU_ITEM_PLAIN_CHOOSE_FONT		6
+#define OPTIONS_MENU_ITEM_PLAIN_FONT_SIZE		7
+#define OPTIONS_MENU_ITEM_PLAIN_SET_LINE_HEIGHT	8
+#define OPTIONS_MENU_ITEM_PLAIN_JUSTIFY_TEXT	9
+#define OPTIONS_MENU_ITEM_PLAIN_WRAP_TEXT		10
+#define OPTIONS_MENU_ITEM_BROWSER_TEXTSIZE		11
+#define OPTIONS_MENU_ITEM_BROWSER_DISPLAYMODE	12
+#define OPTIONS_MENU_ITEM_BROWSER_ENABLEFLASH	13
+#define OPTIONS_MENU_ITEM_BROWSER_INTERFACEMODE	14
+#define OPTIONS_MENU_ITEM_BROWSER_CONFIRMEXIT	15
+#define OPTIONS_MENU_ITEM_BROWSER_SHOWCURSOR	16
+#define OPTIONS_MENU_ITEM_COLOR_SCHEMES			17
+#define OPTIONS_MENU_ITEM_DISPLAY_LABELS		18
+#define OPTIONS_MENU_ITEM_LOAD_LAST_FILE		19
+#define OPTIONS_MENU_ITEM_CPU_BUS_SPEED			20
+#define OPTIONS_MENU_ITEM_CPU_MENU_SPEED		21
+#define OPTIONS_MENU_ITEM_CLEAR_BOOKMARKS		22
 
 BKMainMenu::BKMainMenu() : mode(BKMM_MAIN), captureButton(false), frames(0) {
 	buildMainMenu();
@@ -171,6 +173,14 @@ void BKMainMenu::buildOptionMenu() {
 	t = "PDF - Invert colors: ";
 	t += BKUser::options.pdfInvertColors ? "Enabled" : "Disabled";
 	optionItems.push_back(BKMenuItem(t, "Toggle", 0));
+
+	t = "D-Pad Speed: ";
+	t += BKUser::panSpeedLabels[BKUser::options.pdfDPadSpeed];
+	optionItems.push_back(BKMenuItem(t, "Change", BK_MENU_ITEM_USE_LR_ICON));
+
+	t = "Analog Speed: ";
+	t += BKUser::panSpeedLabels[BKUser::options.pdfAnalogSpeed];
+	optionItems.push_back(BKMenuItem(t, "Change", BK_MENU_ITEM_USE_LR_ICON));
 
 	t = "Plain text - Font file: ";
 	if (BKUser::options.txtFont == "bookr:builtin") {
@@ -514,6 +524,14 @@ int BKMainMenu::updateOptions(unsigned int buttons) {
 			buildOptionMenu();
 			return BK_CMD_MARK_DIRTY;
 		}
+		if (selItem == OPTIONS_MENU_ITEM_PDF_DPAD_SPEED || selItem == OPTIONS_MENU_ITEM_PDF_ANALOG_SPEED) {
+			int& s = selItem == OPTIONS_MENU_ITEM_PDF_DPAD_SPEED ? BKUser::options.pdfDPadSpeed : BKUser::options.pdfAnalogSpeed;
+			if (s > 0) {
+				--s;
+				buildOptionMenu();
+			}
+			return BK_CMD_MARK_DIRTY;
+		}
 		if (selItem == OPTIONS_MENU_ITEM_PLAIN_FONT_SIZE) {
 			--BKUser::options.txtSize;
 			if (BKUser::options.txtSize < 6) {
@@ -604,6 +622,14 @@ int BKMainMenu::updateOptions(unsigned int buttons) {
 				BKUser::controls.cancel = FZ_REPS_CROSS;
 			}
 			buildOptionMenu();
+			return BK_CMD_MARK_DIRTY;
+		}
+		if (selItem == OPTIONS_MENU_ITEM_PDF_DPAD_SPEED || selItem == OPTIONS_MENU_ITEM_PDF_ANALOG_SPEED) {
+			int& s = selItem == OPTIONS_MENU_ITEM_PDF_DPAD_SPEED ? BKUser::options.pdfDPadSpeed : BKUser::options.pdfAnalogSpeed;
+			if (s < BK_PAN_SPEED_LEVELS - 1) {
+				++s;
+				buildOptionMenu();
+			}
 			return BK_CMD_MARK_DIRTY;
 		}
 		if (selItem == OPTIONS_MENU_ITEM_PLAIN_FONT_SIZE) {

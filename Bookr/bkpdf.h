@@ -46,6 +46,7 @@ class BKPDF : public BKDocument {
 	void clipCoords(float& nx, float& ny);
 	void redrawBuffer();
 	int prePan(int x, int y);
+	int dpadPan(int dx, int dy, int button);
 
 	string title;
 
@@ -75,6 +76,7 @@ class BKPDF : public BKDocument {
 	virtual int setZoomToFitWidth();
 	virtual int setZoomToFitHeight();
 	virtual bool hasFineZoom();
+	virtual bool hasTimedPanning();
 	virtual int fineZoom(int pixels);
 	virtual int finishFineZoom();
 	virtual bool hasTrimMargins();

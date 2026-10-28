@@ -87,6 +87,9 @@ class BKUser {
 		int pspMenuSpeed;
 		bool displayLabels;
 		bool pdfInvertColors;
+		// PDF panning speeds, one of the panSpeedLabels levels
+		int pdfDPadSpeed;
+		int pdfAnalogSpeed;
 		string lastFolder;
 		string lastFontFolder;
 		int txtHeightPct;
@@ -101,6 +104,10 @@ class BKUser {
 		bool browserShowCursor;
 	};
 	static Options options;
+
+	#define BK_PAN_SPEED_LEVELS 5
+	#define BK_PAN_SPEED_NORMAL 2
+	static const char* panSpeedLabels[BK_PAN_SPEED_LEVELS];
 };
 
 #endif

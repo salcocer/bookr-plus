@@ -299,24 +299,26 @@ int BKDocument::processEventsForView() {
 			return r;
 	}
 
-	// button handling - digital panning
+	// button handling - digital panning. Repeats start after 20 frames held,
+	// unless the view times the hold itself
 	{
-		if (b[BKUser::controls.screenUp] == 1 || b[BKUser::controls.screenUp] > 20) {
+		int repeatAfter = hasTimedPanning() ? 0 : 20;
+		if (b[BKUser::controls.screenUp] == 1 || b[BKUser::controls.screenUp] > repeatAfter) {
 			int r = screenUp();
 			if (r != 0)
 				return r;
 		}
-		if (b[BKUser::controls.screenDown] == 1 || b[BKUser::controls.screenDown] > 20) {
+		if (b[BKUser::controls.screenDown] == 1 || b[BKUser::controls.screenDown] > repeatAfter) {
 			int r = screenDown();
 			if (r != 0)
 				return r;
 		}
-		if (b[BKUser::controls.screenLeft] == 1 || b[BKUser::controls.screenLeft] > 20) {
+		if (b[BKUser::controls.screenLeft] == 1 || b[BKUser::controls.screenLeft] > repeatAfter) {
 			int r = screenLeft();
 			if (r != 0)
 				return r;
 		}
-		if (b[BKUser::controls.screenRight] == 1 || b[BKUser::controls.screenRight] > 20) {
+		if (b[BKUser::controls.screenRight] == 1 || b[BKUser::controls.screenRight] > repeatAfter) {
 			int r = screenRight();
 			if (r != 0)
 				return r;

@@ -53,15 +53,27 @@ static const float rotateLevels[] = { 0.0f, 90.0f, 180.0f, 270.0f };
 // comic mode turns the page 90 degrees counterclockwise
 static const int comicRotateLevel = 3;
 
-// D-pad pans this many screen pixels per step; holding it repeats every frame.
-static const int panStep = 5;
-// The analog stick pans at a speed in screen pixels per second, not per frame,
-// so it keeps its pace while a slow page is redrawn. Speed grows with the
-// square of the tilt: a light push moves analogMinSpeed for fine positioning,
-// full tilt moves analogMaxSpeed.
+// Panning speeds for the D-Pad Speed and Analog Speed options, from Very slow
+// to Very fast; Normal is the original feel. Speeds are in screen pixels per
+// second, not per frame, so they keep their pace while a slow page is redrawn.
+// D-pad: a press moves step pixels; held, it moves holdSpeed per second.
+struct BKDPadSpeed {
+	int step;
+	float holdSpeed;
+};
+static const BKDPadSpeed dpadSpeeds[BK_PAN_SPEED_LEVELS] = {
+	{ 2, 100.0f }, { 3, 180.0f }, { 5, 300.0f }, { 10, 500.0f }, { 20, 800.0f }
+};
+// Analog stick: speed grows with the square of the tilt, from minSpeed with a
+// light push, for fine positioning, to maxSpeed at full tilt.
+struct BKAnalogSpeed {
+	float minSpeed;
+	float maxSpeed;
+};
+static const BKAnalogSpeed analogSpeeds[BK_PAN_SPEED_LEVELS] = {
+	{ 5.0f, 300.0f }, { 10.0f, 500.0f }, { 15.0f, 800.0f }, { 25.0f, 1200.0f }, { 40.0f, 1800.0f }
+};
 static const int analogDeadZone = 32;
-static const float analogMinSpeed = 15.0f;
-static const float analogMaxSpeed = 800.0f;
 // longest time one step may cover, so a stall can't cause a big jump
 static const float analogMaxFrame = 0.15f;
 
@@ -72,7 +84,8 @@ static float analogSpeed(int v) {
 	if (a > 127)
 		a = 127;
 	float t = float(a - analogDeadZone) / float(127 - analogDeadZone);
-	float s = analogMinSpeed + (analogMaxSpeed - analogMinSpeed) * t * t;
+	const BKAnalogSpeed& speed = analogSpeeds[BKUser::options.pdfAnalogSpeed];
+	float s = speed.minSpeed + (speed.maxSpeed - speed.minSpeed) * t * t;
 	return v < 0 ? -s : s;
 }
 
@@ -1245,20 +1258,68 @@ int BKPDF::pan(int x, int y) {
 	return prePan(dx, dy);
 }
 
+// how long a D-pad button must be held before it starts moving continuously
+static const unsigned int dpadHoldDelayMicros = 300000;
+
+// D-pad pan state per axis (x, y): when the button went down, whether it is
+// moving continuously yet, time of the last step and the sub-pixel movement
+// left over
+static unsigned int dpadPressMicros[2] = { 0, 0 };
+static bool dpadHolding[2] = { false, false };
+static unsigned int dpadLastMicros[2] = { 0, 0 };
+static float dpadRest[2] = { 0.0f, 0.0f };
+
+bool BKPDF::hasTimedPanning() {
+	return true;
+}
+
+// Called on every frame a direction is held. A press moves one step; after
+// dpadHoldDelayMicros the button moves continuously, each frame by the time
+// since the last one, as the analog stick does. Both the delay and the speed
+// are timed, not counted in frames, so a slow page redraw doesn't slow them.
+int BKPDF::dpadPan(int dx, int dy, int button) {
+	const BKDPadSpeed& speed = dpadSpeeds[BKUser::options.pdfDPadSpeed];
+	int axis = dx != 0 ? 0 : 1;
+	unsigned int now = FZScreen::getMicros();
+	if (FZScreen::ctrlReps()[button] == 1) {
+		dpadPressMicros[axis] = now;
+		dpadHolding[axis] = false;
+		return prePan(dx * speed.step, dy * speed.step);
+	}
+	if (!dpadHolding[axis]) {
+		if (now - dpadPressMicros[axis] < dpadHoldDelayMicros)
+			return 0;
+		dpadHolding[axis] = true;
+		dpadLastMicros[axis] = now;
+		dpadRest[axis] = 0.0f;
+		return 0;
+	}
+	float dt = float(now - dpadLastMicros[axis]) / 1000000.0f;
+	if (dt > analogMaxFrame)
+		dt = analogMaxFrame;
+	dpadLastMicros[axis] = now;
+	float d = dpadRest[axis] + speed.holdSpeed * dt;
+	int n = int(d);
+	dpadRest[axis] = d - n;
+	if (n == 0)
+		return 0;
+	return prePan(dx * n, dy * n);
+}
+
 int BKPDF::screenUp() {
-	return prePan(0, -panStep);
+	return dpadPan(0, -1, BKUser::controls.screenUp);
 }
 
 int BKPDF::screenDown() {
-	return prePan(0, panStep);
+	return dpadPan(0, 1, BKUser::controls.screenDown);
 }
 
 int BKPDF::screenLeft() {
-	return prePan(-panStep, 0);
+	return dpadPan(-1, 0, BKUser::controls.screenLeft);
 }
 
 int BKPDF::screenRight() {
-	return prePan(panStep, 0);
+	return dpadPan(1, 0, BKUser::controls.screenRight);
 }
 
 void BKPDF::renderContent() {

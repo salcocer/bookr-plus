@@ -125,16 +125,35 @@ small tag scanner instead.
 
 | Control | Bookr V8.1 | Bookr+ |
 | --- | --- | --- |
-| D-pad | Jumps 250 px (up/down) or 460 px (left/right) | Moves **5 px** per press; hold to scroll smoothly |
+| D-pad | Jumps 250 px (up/down) or 460 px (left/right) | Moves **5 px** per press; held, it glides at **300 px/s** after 0.3 s, timed so a slow page redraw doesn't slow it |
 | Analog stick | Up to 32 px per frame, slowed down by every page redraw | Timed in **pixels per second**: 15 px/s (light push) to 800 px/s (full tilt), on a curve that keeps small pushes precise. Same speed even while a slow page redraws |
+| Speeds | Fixed | **D-Pad Speed** and **Analog Speed** in the options menu (see below); the values above are **Normal** |
 | L / R zoom | Fixed steps (1.0, 1.1, … 2.0, 2.25, 2.5 …) | Page width grows or shrinks by **5 px** per press; hold to keep zooming |
 | While zooming | Page re-rendered after every step | Only the "Zoom 1.27x" label updates; the page renders **once, on release** |
 | After zooming | View jumped sideways (pan was multiplied by the absolute zoom) | View **stays centred** on the same spot |
 | Bookmarks / last view | Saved the nearest zoom step | Save the **exact zoom** |
 
-The step sizes are constants at the top of `Bookr/bkpdf.cpp` (`panStep`,
-`analogMinSpeed`, `analogMaxSpeed`) and in `BKDocument::processEventsForView`
-(zoom `step`).
+**D-Pad Speed** and **Analog Speed** (in the options menu, changed with
+◀ ▶) each have five levels:
+
+| Level | D-pad press | D-pad held | Analog stick, light push → full tilt |
+| --- | --- | --- | --- |
+| Very slow | 2 px | 100 px/s | 5 → 300 px/s |
+| Slow | 3 px | 180 px/s | 10 → 500 px/s |
+| **Normal** | **5 px** | **300 px/s** | **15 → 800 px/s** |
+| Fast | 10 px | 500 px/s | 25 → 1200 px/s |
+| Very fast | 20 px | 800 px/s | 40 → 1800 px/s |
+
+Holding the D-pad is timed, not counted in frames. In V8.1 (and earlier
+Bookr Plus builds) a held button repeated only after 20 passes through the
+main loop, and each pass redraws the page, so on a heavy PDF the repeat could
+take seconds to start and then crawled. Now the PDF view receives every frame
+a direction is held (`hasTimedPanning()`), starts moving after 0.3 s by the
+clock, and moves by the time since the last frame, like the stick. Text files
+keep the old repeat, since there the D-pad turns pages.
+
+The levels are the `dpadSpeeds` and `analogSpeeds` tables at the top of
+`Bookr/bkpdf.cpp`; the zoom `step` is in `BKDocument::processEventsForView`.
 
 For the smoothest stick movement, turn on **PDF - Fast images** in the options
 menu. The page is then drawn once and moving is just copying memory, so it
@@ -285,8 +304,8 @@ Default in-book controls (changeable in Bookr's menu):
 
 | Button | Action |
 | --- | --- |
-| D-pad | Move 5 px (hold to scroll) |
-| Analog stick | Move, speed depends on how far it is pushed |
+| D-pad | Move one step (hold to glide); speed set by **D-Pad Speed** |
+| Analog stick | Move, faster the further it is pushed; speed set by **Analog Speed** |
 | R / L | Zoom in / out (PDF: page width; text files: text size) |
 | △ / □ | Next / previous page |
 | ✕ / ○ | Forward / back 10 pages |
