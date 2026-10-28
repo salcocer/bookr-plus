@@ -1,6 +1,6 @@
-# Bookr Plus
+# Bookr+
 
-A PDF and e-book reader for the Sony PSP, based on **Bookr V8.1**. Bookr Plus
+A PDF and e-book reader for the Sony PSP, based on **Bookr V8.1**. Bookr+
 makes the 2009 source build with today's PSP toolchain and adds a handful of
 reading improvements: smooth panning and zoom, margin trimming for scanned
 comics, a right-to-left comic mode, EPUB books, UTF-8 text files, zoom for
@@ -9,7 +9,7 @@ and use of the PSP-2000/3000's extra memory.
 
 It has been tested on a **PSP-3000 running ARK-4 custom firmware**.
 
-Bookr Plus reads plain text, PDF, EPUB, CHM, HTML, DjVu and
+Bookr+ reads plain text, PDF, EPUB, CHM, HTML, DjVu and
 PalmDoc/Mobipocket (EPUB and Mobipocket without DRM). The original V8.1
 readme is kept in [README.original.md](README.original.md).
 
@@ -55,7 +55,7 @@ A [`build.sh`](build.sh) script builds everything in the right order.
 The app is now built with `PSP_LARGE_MEMORY = 1` (the `MEMSIZE` flag), and
 Bookr already asks for "all memory minus 7 MB". On a PSP-2000/3000 that gives
 it about 45 MB instead of about 17 MB, which helps with large and image-heavy
-PDFs. It is named **Bookr Plus** on the XMB so it can sit next to an original
+PDFs. It is named **Bookr+** on the XMB so it can sit next to an original
 Bookr.
 
 ### UTF-8 text files with accents
@@ -123,7 +123,7 @@ small tag scanner instead.
 
 ### Precise movement and zoom in PDFs
 
-| Control | Bookr V8.1 | Bookr Plus |
+| Control | Bookr V8.1 | Bookr+ |
 | --- | --- | --- |
 | D-pad | Jumps 250 px (up/down) or 460 px (left/right) | Moves **5 px** per press; hold to scroll smoothly |
 | Analog stick | Up to 32 px per frame, slowed down by every page redraw | Timed in **pixels per second**: 15 px/s (light push) to 800 px/s (full tilt), on a curve that keeps small pushes precise. Same speed even while a slow page redraws |
@@ -139,7 +139,7 @@ The step sizes are constants at the top of `Bookr/bkpdf.cpp` (`panStep`,
 For the smoothest stick movement, turn on **PDF - Fast images** in the options
 menu. The page is then drawn once and moving is just copying memory, so it
 scrolls at the full 60 fps. Without it, every move redraws the page, which is
-slow for image-heavy PDFs such as comics. Bookr Plus now remembers this setting
+slow for image-heavy PDFs such as comics. Bookr+ now remembers this setting
 between launches (V8.1 turned it off every time).
 
 ### Trim margins
@@ -192,7 +192,7 @@ decoded, and silently drew a blank grey square instead. That limit protected
 the PSP-1000, but it blanked every colour page of a scanned comic: an 800 ×
 1202 RGB page needs 2.8 MB, while the same page in grayscale needs 0.9 MB.
 
-Bookr Plus now loads an image whenever three times its decoded size (the
+Bookr+ now loads an image whenever three times its decoded size (the
 samples, plus the tile and scaled copy drawn from them) and 1 MB of headroom
 fit in free memory at that moment (`bk_pdf_fitsinmemory()` in
 `mupdf/mupdf/pdf_image.c`). Colour pages now show on a PSP-3000, and
@@ -241,13 +241,13 @@ page number.
 
 ### Neobrutalist interface
 
-Bookr Plus has its own look: flat bright colours, thick black outlines, hard
+Bookr+ has its own look: flat bright colours, thick black outlines, hard
 black shadows and square corners, in place of V8.1's translucent grey rounded
 panels.
 
 | Element | Look |
 | --- | --- |
-| Start screen | Cream background, a new logo (a yellow "Bookr" card with a tilted pink "PLUS" sticker) and a pink **Press Start** button |
+| Start screen | Cream background, the Bookr+ logo (a yellow "Bookr" card with a tilted pink "+" badge) and a pink **Press Start** button |
 | Menus and file browser | Cream panels, yellow title bar, cyan button bar, pink selection, black text |
 | Toolbar | Cream bar; the open menu is a white column and the selected item a pink box |
 | Icons | Black, with hard edges |
@@ -398,7 +398,7 @@ Bookr does with `PSP_HEAP_SIZE_KB(-7*1024)`.
 
 ## License
 
-Bookr and Bookr Plus are licensed under the **GNU General Public License
+Bookr and Bookr+ are licensed under the **GNU General Public License
 version 2 or later** (see [LICENSE](LICENSE)). The bundled libraries keep
 their own licences: MuPDF under the Aladdin Free Public License, DjVuLibre
 under the GPL, and chmlib under the LGPL.

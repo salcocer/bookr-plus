@@ -25,7 +25,7 @@ LIBS=-Lmupdf/libs -Ldjvu/libs -ldjvulibre -lmupdf -lraster -lworld -lfonts -lstr
 
 
 EXTRA_TARGETS = EBOOT.PBP
-PSP_EBOOT_TITLE = Bookr Plus
+PSP_EBOOT_TITLE = Bookr+
 # PSP-2000/3000: let the app use the extra 32 MB of RAM
 PSP_LARGE_MEMORY = 1
 

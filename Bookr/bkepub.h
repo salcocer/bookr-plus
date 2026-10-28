@@ -1,5 +1,5 @@
 /*
- * Bookr Plus: document reader for the Sony PSP
+ * Bookr+: document reader for the Sony PSP
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

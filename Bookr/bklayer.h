@@ -87,7 +87,7 @@ using namespace std;
 #define BK_IMG_FOLDER_XSIZE 20
 #define BK_IMG_FOLDER_YSIZE 20
 
-// Bookr Plus neobrutalism palette (the PSP GU takes colours as 0xAABBGGRR)
+// Bookr+ neobrutalism palette (the PSP GU takes colours as 0xAABBGGRR)
 #define NEO_INK    0xff111111
 #define NEO_CREAM  0xffdcf4ff
 #define NEO_WHITE  0xffffffff
