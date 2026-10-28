@@ -40,6 +40,7 @@ static void* memalign(int t, int s) {
 #endif
 
 #include "bkpdf.h"
+#include "bkcbz.h"
 
 extern "C" {
 #include "fitz.h"
@@ -93,6 +94,8 @@ struct PDFContext {
 	pdf_xref *xref;
 	pdf_outline *outline;
 	pdf_pagetree *pages;
+	/* a CBZ comic instead: no xref, each page is one image */
+	BKComic *cbz;
 
 	/* current view params */
 	/*float zoom;
@@ -122,6 +125,20 @@ struct PDFContext {
 	int comicPrevRotateLevel;
 	bool comicPrevTrim;
 };
+
+static int pdfPageCount(PDFContext* ctx) {
+	return ctx->cbz ? bkComicPageCount(ctx->cbz) : pdf_getpagecount(ctx->pages);
+}
+
+static void pdfDropPage(PDFContext* ctx) {
+	if (ctx->page) {
+		if (ctx->cbz)
+			bkComicDropPage(ctx->page);
+		else
+			pdf_droppage(ctx->page);
+	}
+	ctx->page = 0;
+}
 
 static int pdfInit() {
 //	fz_error *error;
@@ -295,6 +312,32 @@ static PDFContext* pdfOpen(char *filename) {
 	pdfapp_showpage(app, 1, 1);
 */
 
+	ctx->pageno = 1;
+	ctx->zoom = 1.0f;
+	ctx->zoomLevel = 4;
+	ctx->rotate = 0.0f;
+	ctx->rotateLevel = 0;
+	return ctx;
+}
+
+// a CBZ comic: the archive's images are the pages, drawn by the same renderer
+static PDFContext* comicOpen(char *filename) {
+	BKComic* comic = bkComicOpen(filename);
+	if (comic == 0)
+		return 0;
+	PDFContext* ctx = new PDFContext();
+	memset(ctx, 0, sizeof(PDFContext));
+	fz_error *error = fz_newrenderer(&ctx->rast, pdf_devicergb, 0, 1024 * 512);
+	if (error) {
+		printf("err0: %s\n", error->msg);
+		bkComicClose(comic);
+		delete ctx;
+		return 0;
+	}
+	ctx->cbz = comic;
+	// comic page images differ in size, so the zoom stays relative to the
+	// page width, as with trim margins; it starts at fit width
+	ctx->trimFit = 1.0f;
 	ctx->pageno = 1;
 	ctx->zoom = 1.0f;
 	ctx->zoomLevel = 4;
@@ -520,7 +563,7 @@ static void pdfTrimMargins(PDFContext* ctx) {
 	const int inkLevel = 215;		// pixels darker than this are content
 	const int minInk = 3;			// ink pixels a column needs, to skip specks
 
-	int pageCount = pdf_getpagecount(ctx->pages);
+	int pageCount = pdfPageCount(ctx);
 	if (ctx->trims == NULL) {
 		ctx->trims = (PDFContext::TrimEdges*)calloc(pageCount, sizeof(PDFContext::TrimEdges));
 		if (ctx->trims == NULL)
@@ -591,24 +634,14 @@ static void pdfTrimMargins(PDFContext* ctx) {
 	ctx->page->mediabox.x1 = t.x1;
 }
 
-static int pdfLoadPage(PDFContext* ctx) {
-	if (fullPageBuffer != NULL) {
-		fz_droppixmap(fullPageBuffer);
-		fullPageBuffer = NULL;
-	}
-	strcpy(lastPageError, "No error");
-
+// loads the current page of a PDF into ctx->page
+static int pdfLoadPDFPage(PDFContext* ctx) {
 	fz_error *error;
 	fz_obj *obj;
-
-	if (ctx->page)
-		pdf_droppage(ctx->page);
-	ctx->page = 0;
 
 	// empty store to save memory
 	if (ctx->xref->store)
 		pdf_emptystore(ctx->xref->store);
-	bk_pdf_resetbufferssize();
 	/*
 	pdf_item *item;
 	fz_obj *key;
@@ -632,6 +665,25 @@ static int pdfLoadPage(PDFContext* ctx) {
 		strcpy(lastPageError, error->msg);
 		return -1;
 	}
+	return 0;
+}
+
+static int pdfLoadPage(PDFContext* ctx) {
+	if (fullPageBuffer != NULL) {
+		fz_droppixmap(fullPageBuffer);
+		fullPageBuffer = NULL;
+	}
+	strcpy(lastPageError, "No error");
+
+	pdfDropPage(ctx);
+	bk_pdf_resetbufferssize();
+	if (ctx->cbz) {
+		ctx->page = bkComicLoadPage(ctx->cbz, ctx->pageno - 1, lastPageError, sizeof(lastPageError));
+		if (ctx->page == 0)
+			return -1;
+	} else if (pdfLoadPDFPage(ctx) != 0) {
+		return -1;
+	}
 
 	//printf("\n\n debug tree ------------------------------------------------\n");
 	//fz_debugtree(ctx->page->tree);
@@ -642,11 +694,13 @@ static int pdfLoadPage(PDFContext* ctx) {
 	//fz_debugtree(ctx->page->tree);
 
 	recalcScreenMediaBox(ctx);
-	if (ctx->trim) {
-		// keep the zoom relative to the trimmed width, so every page's
+	if (ctx->trim || ctx->cbz) {
+		// keep the zoom relative to the (trimmed) width, so every page's
 		// content fills the screen the same way
-		pdfTrimMargins(ctx);
-		recalcScreenMediaBox(ctx);
+		if (ctx->trim) {
+			pdfTrimMargins(ctx);
+			recalcScreenMediaBox(ctx);
+		}
 		float w = fabs(screenMediaBox.x1 - screenMediaBox.x0) / ctx->zoom;
 		if (ctx->trimFit > 0.0f && w > 0.0f) {
 			ctx->zoom = clampZoom(ctx->trimFit * 480.0f / w);
@@ -789,7 +843,8 @@ BKPDF* BKPDF::create(string& file) {
 
 	pdfInit();
 
-	PDFContext* ctx = pdfOpen((char*)file.c_str());
+	bool comic = bkIsComic(file.c_str());
+	PDFContext* ctx = comic ? comicOpen((char*)file.c_str()) : pdfOpen((char*)file.c_str());
 	if (ctx == 0) {
 		delete b;
 		return 0;
@@ -804,7 +859,13 @@ BKPDF* BKPDF::create(string& file) {
 			lastSlash == i++;
 	}
 	b->title.assign(file, lastSlash, n - lastSlash);
-	if (ctx->xref->info) {
+	if (comic) {
+		// the file name without its folder and extension
+		string::size_type s = file.find_last_of("/\\");
+		b->title = file.substr(s == string::npos ? 0 : s + 1);
+		if (b->title.size() > 4)
+			b->title.erase(b->title.size() - 4);
+	} else if (ctx->xref->info) {
 		fz_error *error;
 		fz_obj *obj;
 		obj = fz_dictgets(ctx->xref->info, "Title");
@@ -835,9 +896,7 @@ static void pdfClose(PDFContext* ctx) {
 		free(ctx->trims);
 	ctx->trims = 0;
 
-	if (ctx->page)
-		pdf_droppage(ctx->page);
-	ctx->page = 0;
+	pdfDropPage(ctx);
 
 	if (ctx->pages)
 		pdf_droppagetree(ctx->pages);
@@ -851,12 +910,18 @@ static void pdfClose(PDFContext* ctx) {
 		pdf_dropoutline(ctx->outline);
 	ctx->outline = 0;
 
-	if (ctx->xref->store)
-		pdf_dropstore(ctx->xref->store);
-	ctx->xref->store = 0;
+	if (ctx->cbz)
+		bkComicClose(ctx->cbz);
+	ctx->cbz = 0;
 
-	pdf_closexref(ctx->xref);
-	ctx->xref = 0;
+	if (ctx->xref) {
+		if (ctx->xref->store)
+			pdf_dropstore(ctx->xref->store);
+		ctx->xref->store = 0;
+
+		pdf_closexref(ctx->xref);
+		ctx->xref = 0;
+	}
 
 	if (ctx->rast)
 		fz_droprenderer(ctx->rast);
@@ -944,7 +1009,7 @@ int BKPDF::applyZoom(float z) {
 	ctx->zoom = z;
 	if (!pageError) {
 		recalcScreenMediaBox(ctx);
-		if (ctx->trim)
+		if (ctx->trim || ctx->cbz)
 			ctx->trimFit = fabs(screenMediaBox.x1 - screenMediaBox.x0) / 480.0f;
 	}
 	clipCoords(nx, ny);
@@ -1011,7 +1076,7 @@ int BKPDF::setTrimMargins(bool on) {
 	if (on == ctx->trim)
 		return 0;
 	ctx->trim = on;
-	ctx->trimFit = on ? 1.0f : 0.0f;
+	ctx->trimFit = on || ctx->cbz ? 1.0f : 0.0f;
 	panX = 0;
 	loadNewPage = true;
 	return BK_CMD_MARK_DIRTY;
@@ -1044,7 +1109,7 @@ int BKPDF::setComicMode(bool on) {
 		ctx->rotateLevel = ctx->comicPrevRotateLevel;
 		if (!ctx->comicPrevTrim) {
 			ctx->trim = false;
-			ctx->trimFit = 0.0f;
+			ctx->trimFit = ctx->cbz ? 1.0f : 0.0f;
 		}
 	}
 	ctx->rotate = rotateLevels[ctx->rotateLevel];
@@ -1108,6 +1173,13 @@ int BKPDF::setBookmarkPosition(map<string, int>& m) {
 		map<string, int>::iterator tf = m.find("trimFitPermille");
 		ctx->trimFit = (tf != m.end() && tf->second > 0) ? float(tf->second) / 1000.0f : 1.0f;
 		loadNewPage = true;
+	} else if (ctx->cbz) {
+		// the relative zoom saved with the view, not one worked out from
+		// whichever page was open when it was restored
+		map<string, int>::iterator tf = m.find("trimFitPermille");
+		if (tf != m.end() && tf->second > 0)
+			ctx->trimFit = float(tf->second) / 1000.0f;
+		loadNewPage = true;
 	}
 	map<string, int>::iterator cm = m.find("comic");
 	ctx->comic = cm != m.end() && cm->second != 0;
@@ -1124,7 +1196,7 @@ bool BKPDF::isPaginated() {
 }
 
 int BKPDF::getTotalPages() {
-	return pdf_getpagecount(ctx->pages);
+	return pdfPageCount(ctx);
 }
 
 int BKPDF::getCurrentPage() {
@@ -1136,8 +1208,8 @@ int BKPDF::setCurrentPage(int position) {
 	ctx->pageno = position;
 	if (ctx->pageno < 1)
 		ctx->pageno = 1;
-	if (ctx->pageno > pdf_getpagecount(ctx->pages))
-		ctx->pageno = pdf_getpagecount(ctx->pages);
+	if (ctx->pageno > pdfPageCount(ctx))
+		ctx->pageno = pdfPageCount(ctx);
 	if (ctx->pageno != oldPage) {
 		loadNewPage = true;
 		char t[256];
@@ -1198,7 +1270,7 @@ void BKPDF::getTitle(string& s) {
 }
 
 void BKPDF::getType(string& s) {
-	s = "PDF";
+	s = ctx && ctx->cbz ? "CBZ" : "PDF";
 }
 
 void BKPDF::getFileName(string& s) {
@@ -1523,9 +1595,9 @@ int BKPDF::updateContent() {
 		int skipped = bk_pdf_skippedimages();
 		if (skipped > 0)
 			snprintf(t, 256, "Page %d of %d - not enough memory for %d image%s", ctx->pageno,
-				pdf_getpagecount(ctx->pages), skipped, skipped == 1 ? "" : "s");
+				pdfPageCount(ctx), skipped, skipped == 1 ? "" : "s");
 		else
-			snprintf(t, 256, "Page %d of %d", ctx->pageno, pdf_getpagecount(ctx->pages));
+			snprintf(t, 256, "Page %d of %d", ctx->pageno, pdfPageCount(ctx));
 		setBanner(t);
 		return BK_CMD_MARK_DIRTY;
 	}
@@ -1557,13 +1629,17 @@ int BKPDF::updateContent() {
 		redrawBuffer();
 		loadNewPage = false;
 		char t[256];
-		snprintf(t, 256, "Page %d of %d", ctx->pageno, pdf_getpagecount(ctx->pages));
+		snprintf(t, 256, "Page %d of %d", ctx->pageno, pdfPageCount(ctx));
 		banner = t;
 		bannerFrames = 60;
 		return BK_CMD_MARK_DIRTY;
 	}
 	*/
 	return 0;
+}
+
+bool BKPDF::isComic(string& file) {
+	return bkIsComic(file.c_str());
 }
 
 bool BKPDF::isPDF(string& file) {

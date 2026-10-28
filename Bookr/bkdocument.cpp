@@ -27,7 +27,7 @@
 
 BKDocument* BKDocument::create(string& filePath) {
 	BKDocument* doc = 0;
-	if (BKPDF::isPDF(filePath)) {
+	if (BKPDF::isPDF(filePath) || BKPDF::isComic(filePath)) {
 		doc = BKPDF::create(filePath);
 	} else if (BKDJVU::isDJVU(filePath)) {
 		doc = BKDJVU::create(filePath);

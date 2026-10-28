@@ -101,6 +101,8 @@ class BKPDF : public BKDocument {
 
 	static BKPDF* create(string& file);
 	static bool isPDF(string& file);
+	// CBZ comics are shown by the PDF viewer, one image per page
+	static bool isComic(string& file);
 };
 
 #endif
