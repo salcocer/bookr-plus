@@ -13,6 +13,18 @@ Bookr+ reads plain text, PDF, EPUB, CHM, HTML, DjVu and
 PalmDoc/Mobipocket (EPUB and Mobipocket without DRM). The original V8.1
 readme is kept in [README.original.md](README.original.md).
 
+
+
+## Installing on a PSP
+
+1. Unzip the bookr+.zip found in the release tab.
+
+2. Place the bookr folder in /PSP/GAME/
+
+3. Put your books anywhere on the Memory Stick & Profit!
+
+
+
 ## Screenshots
 <table>
   <tr>
@@ -28,6 +40,9 @@ readme is kept in [README.original.md](README.original.md).
     <td width="50%"><img width="100%" alt="img_5" src="https://github.com/user-attachments/assets/3dd3e2a9-2706-436e-b0a6-2c1cd17908a7" /></td>
   </tr>
 </table>
+
+
+
 
 ### Uses the PSP-2000/3000 extra memory
 
@@ -101,18 +116,7 @@ rejects common EPUB 3 metadata, so container.xml and the OPF are read with a
 small tag scanner instead.
 
 
-## Installing on a PSP
 
-Install
-Unzip the bookrpsp.zip found in the release tab.
-Place the bookrpsp folder in /PSP/GAME/
-Profit!
-
-1. Unzip the bookrpsp.zip found in the release tab.
-
-2. Place the bookrpsp folder in /PSP/GAME/
-
-3. Put your books anywhere on the Memory Stick & Profit!
 
 ## Building from source
 
