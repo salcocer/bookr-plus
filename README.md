@@ -14,41 +14,20 @@ PalmDoc/Mobipocket (EPUB and Mobipocket without DRM). The original V8.1
 readme is kept in [README.original.md](README.original.md).
 
 ## Screenshots
-
-| | |
-| --- | --- |
-| ![File browser](docs/screenshots/01-file-browser.png) | ![A Spanish UTF-8 text file](docs/screenshots/02-text-utf8.png) |
-| The file browser | A UTF-8 text file in Spanish, accents included |
-| ![A PDF page](docs/screenshots/03-pdf.png) | ![The zoom menu](docs/screenshots/04-zoom-menu.png) |
-| A PDF page at fit width | A colour comic, with the zoom menu's new **Trim margins** and **Comic mode** items |
-| ![Comic mode](docs/screenshots/05-comic-mode.png) | |
-| Comic mode: the page is turned for holding the PSP upright, D-pad on top, and opens at its top-right corner | |
-
-These were taken in the [PPSSPP](https://www.ppsspp.org/) emulator running the
-same `EBOOT.PBP`, so the memory counter shows the emulator's memory, a little
-more than a real PSP-3000 has. The file browser and zoom menu shots still show
-the grey interface from before the [neobrutalist restyle](#neobrutalist-interface). The books are public domain: *Don Quijote*
-(Cervantes), *Alice's Adventures in Wonderland* (Lewis Carroll, illustrated by
-John Tenniel) and *Little Nemo in Slumberland* (Winsor McCay, 1905).
-
-## What's new compared to Bookr V8.1
-
-### Builds with the current PSP toolchain
-
-The V8.1 source last compiled with a 2009 Windows/Cygwin setup. It now builds
-on macOS (and should on Linux) with the [pspdev](https://github.com/pspdev/pspdev)
-toolchain (tested with release v20261001, GCC 15.2). The changes needed were:
-
-| Area | Change |
-| --- | --- |
-| Makefiles | Hardcoded `/usr/local/pspdev` and `c:/pspsdk` FreeType paths replaced with `psp-config --psp-prefix`; Windows `\` paths in object lists fixed; links `-lbz2`, which current FreeType needs |
-| MuPDF (`pdf_font.c`) | Used FreeType's private `ftobjs.h` header to read the font driver name; now uses the public `FT_Get_Font_Format()` |
-| MuPDF (`xref.h`) | Missing declaration for `pdf_uncacheobject()`, an error since GCC 14 |
-| DjVuLibre | Built as C++98 with `-fpermissive` and `stddef.h` included, as the 2007 code expects |
-| App | Built as C++98 (old narrowing in Vietnamese tables); `stricmp` mapped to `strcasecmp`; `pspTime` renamed to `ScePspDateTime` in the SDK; `printf` redirect declared after `stdio.h` |
-| `djvu/Makefile` | Creates its `libs` folder, which git does not track |
-
-A [`build.sh`](build.sh) script builds everything in the right order.
+<table>
+  <tr>
+    <td width="50%"><img width="100%" alt="img_0" src="https://github.com/user-attachments/assets/f847788e-a212-4333-8071-fae3c121cbd3" /></td>
+    <td width="50%"><img width="100%" alt="img_1" src="https://github.com/user-attachments/assets/ae99ade8-2e86-433f-896f-8dd66215c6cc" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img width="100%" alt="img_2" src="https://github.com/user-attachments/assets/76026db3-d541-47ba-8741-447cd19ee2d1" /></td>
+    <td width="50%"><img width="100%" alt="img_3" src="https://github.com/user-attachments/assets/7eb9be7e-9182-45b4-8b14-da74c0a96d17" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img width="100%" alt="img_4" src="https://github.com/user-attachments/assets/f2b8f6e2-dcfd-4b2e-8715-b85006fb2137" /></td>
+    <td width="50%"><img width="100%" alt="img_5" src="https://github.com/user-attachments/assets/3dd3e2a9-2706-436e-b0a6-2c1cd17908a7" /></td>
+  </tr>
+</table>
 
 ### Uses the PSP-2000/3000 extra memory
 
@@ -121,211 +100,19 @@ parser would take it for `<head>` and skip its text. The bundled TinyXML
 rejects common EPUB 3 metadata, so container.xml and the OPF are read with a
 small tag scanner instead.
 
-### Precise movement and zoom in PDFs
-
-| Control | Bookr V8.1 | Bookr+ |
-| --- | --- | --- |
-| D-pad | Jumps 250 px (up/down) or 460 px (left/right) | Moves **5 px** per press; held, it glides at **300 px/s** after 0.3 s, timed so a slow page redraw doesn't slow it |
-| Analog stick | Up to 32 px per frame, slowed down by every page redraw | Timed in **pixels per second**: 15 px/s (light push) to 800 px/s (full tilt), on a curve that keeps small pushes precise. Same speed even while a slow page redraws |
-| Speeds | Fixed | **D-Pad Speed** and **Analog Speed** in the options menu (see below); the values above are **Normal** |
-| L / R zoom | Fixed steps (1.0, 1.1, … 2.0, 2.25, 2.5 …) | Page width grows or shrinks by **5 px** per press; hold to keep zooming |
-| While zooming | Page re-rendered after every step | Only the "Zoom 1.27x" label updates; the page renders **once, on release** |
-| After zooming | View jumped sideways (pan was multiplied by the absolute zoom) | View **stays centred** on the same spot |
-| Bookmarks / last view | Saved the nearest zoom step | Save the **exact zoom** |
-
-**D-Pad Speed** and **Analog Speed** (in the options menu, changed with
-◀ ▶) each have five levels:
-
-| Level | D-pad press | D-pad held | Analog stick, light push → full tilt |
-| --- | --- | --- | --- |
-| Very slow | 2 px | 100 px/s | 5 → 300 px/s |
-| Slow | 3 px | 180 px/s | 10 → 500 px/s |
-| **Normal** | **5 px** | **300 px/s** | **15 → 800 px/s** |
-| Fast | 10 px | 500 px/s | 25 → 1200 px/s |
-| Very fast | 20 px | 800 px/s | 40 → 1800 px/s |
-
-Holding the D-pad is timed, not counted in frames. In V8.1 (and earlier
-Bookr Plus builds) a held button repeated only after 20 passes through the
-main loop, and each pass redraws the page, so on a heavy PDF the repeat could
-take seconds to start and then crawled. Now the PDF view receives every frame
-a direction is held (`hasTimedPanning()`), starts moving after 0.3 s by the
-clock, and moves by the time since the last frame, like the stick. Text files
-keep the old repeat, since there the D-pad turns pages.
-
-The levels are the `dpadSpeeds` and `analogSpeeds` tables at the top of
-`Bookr/bkpdf.cpp`; the zoom `step` is in `BKDocument::processEventsForView`.
-
-For the smoothest stick movement, turn on **PDF - Fast images** in the options
-menu. The page is then drawn once and moving is just copying memory, so it
-scrolls at the full 60 fps. Without it, every move redraws the page, which is
-slow for image-heavy PDFs such as comics. Bookr+ now remembers this setting
-between launches (V8.1 turned it off every time).
-
-### Trim margins
-
-Scanned books and comics often have white side margins that change from page
-to page, typically wider on the left on odd pages and on the right on even
-pages. A zoom and position that frame one page well are off on the next.
-
-**SELECT → zoom menu → Trim margins: Off/On** hides the white space at the
-left and right of every page:
-
-- When a page opens, it is rendered small (400 px wide) and each column is
-  checked for ink (pixels darker than 215). Columns need at least 3 ink
-  pixels, so dust specks are ignored. A 1.5% safety margin is added on each
-  side, so content is never cut.
-- The page's media box is narrowed to that range in memory, like a crop box.
-  The PDF file is not modified.
-- The result is cached per page, so each page is analysed only once while the
-  book is open.
-- The zoom is kept **relative to the trimmed width**, so every page's content
-  fills the screen the same way. Turning trim on starts at "fit width".
-- While trim is on, turning the page **keeps the view position**, so a
-  framing you set with the arrows and zoom carries over to the next page.
-- The trim setting and zoom are saved with the book's last view.
-
-### Comic mode
-
-For reading manga and other right-to-left comics with the PSP held upright,
-D-pad at the top.
-
-**SELECT → zoom menu → Comic mode: Off/On** does three things:
-
-- Turns the page **90° counterclockwise**, so the top of the page sits next to
-  the D-pad and the bottom next to the ✕ ○ □ △ buttons.
-- Turns **Trim margins** on, so the page's height fills the screen and the
-  white side margins are gone.
-- Opens every page at its **top-right corner**, where a right-to-left comic
-  starts. This applies to next/previous page and to page jumps. Your zoom is
-  kept.
-
-Turning Comic mode off restores the rotation and trim setting it replaced.
-Bookmarks and the last view remember Comic mode, and still open at the exact
-saved position. The start corner is worked out from the page's rotation, so
-it stays right if you rotate the page while Comic mode is on.
-
-### Colour pages in image PDFs
-
-Bookr's MuPDF refused to load any image needing more than 2 MB once
-decoded, and silently drew a blank grey square instead. That limit protected
-the PSP-1000, but it blanked every colour page of a scanned comic: an 800 ×
-1202 RGB page needs 2.8 MB, while the same page in grayscale needs 0.9 MB.
-
-Bookr+ now loads an image whenever three times its decoded size (the
-samples, plus the tile and scaled copy drawn from them) and 1 MB of headroom
-fit in free memory at that moment (`bk_pdf_fitsinmemory()` in
-`mupdf/mupdf/pdf_image.c`). Colour pages now show on a PSP-3000, and
-on a PSP-1000 oversized images are still skipped rather than crashing. The
-per-page image total was raised from 8 MB to 32 MB as a sanity cap.
-
-The probe allocates and frees a block. Its pointer is `volatile`, because GCC
-otherwise removes an unused `malloc`/`free` pair, which silently turns the
-check into "always fits".
-
-### Memory diagnostics
-
-- **Toolbar memory counter:** the counter next to the clock and battery shows
-  **used/free** in MB (for example `8/36M`) instead of only kilobytes used.
-  "Free" is the largest block `malloc` can hand out, found by binary search,
-  so it shows whether the PSP-2000/3000 extra memory is active.
-- **No more silent blanks:** when an image is skipped for lack of memory, the
-  page banner says so, for example "Page 1 of 222 - not enough memory for 1
-  image", instead of showing an unexplained grey page.
-
-If the free number stays under about 15 MB on a PSP-2000/3000, the custom
-firmware is not granting the extra memory. On ARK-4 that is the `highmem`
-setting in `SETTINGS.TXT`.
-
-### Screenshots to the Memory Stick
-
-**SELECT → camera menu → Screenshot** saves what is on the screen as a PNG:
-
-- The toolbar closes first and the page is redrawn without banners or tips,
-  so the picture shows only the page, exactly as you see it, including zoom,
-  rotation and comic mode.
-- Files go to `PICTURE/BookrPlus/` on the Memory Stick, named by date and
-  time, for example `BookrPlus_20261028_234029.png`. Two shots in the same
-  second get `_2`, `_3`. The PSP's **Photo** menu lists them.
-- A green box in the middle of the screen says **Screenshot saved** with the
-  file name, then fades out. If the file can't be created or written (Memory
-  Stick full or locked), a red **Screenshot failed** box gives the reason
-  instead.
-- Each shot is 480 × 272, usually 30 to 400 KB.
-
-The image is read from the frame buffer the display is showing
-(`sceDisplayGetFrameBuf`) and written with libpng, which Bookr already links
-for its textures (`FZScreen::saveScreenshot()` in `Bookr/fzscreenpsp.cpp`).
-To make room for the fifth toolbar menu, the CPU speed moved up next to the
-page number.
-
-### Neobrutalist interface
-
-Bookr+ has its own look: flat bright colours, thick black outlines, hard
-black shadows and square corners, in place of V8.1's translucent grey rounded
-panels.
-
-| Element | Look |
-| --- | --- |
-| Start screen | Cream background, the Bookr+ logo (a yellow "Bookr" card with a tilted pink "+" badge) and a pink **Press Start** button |
-| Menus and file browser | Cream panels, yellow title bar, cyan button bar, pink selection, black text |
-| Toolbar | Cream bar; the open menu is a white column and the selected item a pink box |
-| Icons | Black, with hard edges |
-| Popups | Yellow title for warnings, cyan for information, red for errors |
-| XMB icon | Matches the new logo, on a transparent background |
-
-The colours you read in (**Color schemes**) are not affected. The palette is
-the `NEO_*` constants in `Bookr/bklayer.h`, written as `0xAABBGGRR`, the byte
-order the PSP's GPU uses, and every panel is drawn by `BKLayer::drawNeoBox()`.
-The icons in `data/ui.png` and `data/ui2.png` are white and tinted when drawn,
-so their colour is set in code.
-
-### Bug fixes
-
-- `recalcScreenMediaBox()` used the page's `x0` where it meant `y0`. It made
-  no difference while every page started at (0, 0), but it would have
-  misplaced trimmed pages and PDFs whose crop box does not start at the
-  origin.
-- The SELECT toolbar always showed **✕** next to "Select", "Turn on" and the
-  other actions, even with the default Asian button style, where **○**
-  selects. It now shows the button that actually selects, like the menus do.
-- In HTML-based books (Mobipocket, and now EPUB) the first letter of each
-  paragraph was drawn at the end of the line before it ("…Rabbit-Hole **A**" /
-  "**lice** was…") when the text started right after the `<p>` tag. The line
-  layout ends a line after the first character of the next paragraph, which in
-  text files is the invisible newline; HTML paragraphs now start with a space
-  in the same way.
-- HTML character references such as `&amp;`, `&nbsp;`, `&eacute;` and
-  `&#8217;` were shown as typed. They are now decoded, in Mobipocket books
-  too.
-
-## Controls
-
-Default in-book controls (changeable in Bookr's menu):
-
-| Button | Action |
-| --- | --- |
-| D-pad | Move one step (hold to glide); speed set by **D-Pad Speed** |
-| Analog stick | Move, faster the further it is pushed; speed set by **Analog Speed** |
-| R / L | Zoom in / out (PDF: page width; text files: text size) |
-| △ / □ | Next / previous page |
-| ✕ / ○ | Forward / back 10 pages |
-| SELECT | Toolbar: bookmarks, pages, zoom (fit height, fit width, zoom out, zoom in, **trim margins**, **comic mode**), rotation, **screenshot** |
-| START | Main menu and options |
 
 ## Installing on a PSP
 
-1. Build `EBOOT.PBP` (see below), or take it from a release.
-2. Copy it to `PSP/GAME/BookrPlus/EBOOT.PBP` on the Memory Stick. Also copy
-   `Bookr/WebVIQR.txt` there if you read Vietnamese HTML/CHM files.
-3. Put your books anywhere on the Memory Stick; Bookr has its own file browser.
+Install
+Unzip the bookrpsp.zip found in the release tab.
+Place the bookrpsp folder in /PSP/GAME/
+Profit!
 
-On macOS, Finder adds hidden `._` files when copying to the Memory Stick. Bookr
-lists them as books, and in the `ISO` folder they can confuse the PSP's game
-list. Remove them before ejecting:
+1. Unzip the bookrpsp.zip found in the release tab.
 
-```sh
-dot_clean "/Volumes/NO NAME"
-```
+2. Place the bookrpsp folder in /PSP/GAME/
+
+3. Put your books anywhere on the Memory Stick & Profit!
 
 ## Building from source
 
@@ -344,41 +131,6 @@ dot_clean "/Volumes/NO NAME"
 After a library has been built once, `cd Bookr && make` rebuilds only the app.
 The Makefiles do not track header dependencies, so after editing a header,
 delete the app's `.o` files first.
-
-## Tools for the Mac
-
-Both tools live in [`tools/`](tools).
-
-### `pdf2psp.swift`: make image PDFs readable in Bookr
-
-Bookr's PDF engine dates from 2005 and cannot decode **JBIG2** or
-**JPEG 2000** images. That is the "unknown filter: JBIG2Decode" error.
-Internet Archive scans use both: each page is a JPEG 2000 background, a
-JPEG 2000 ink colour layer, and a 1-bit JBIG2 mask holding the line art.
-
-macOS can read those formats, so this tool redraws every page and stores it
-as a plain JPEG, which Bookr handles. Black-and-white pages are stored as
-grayscale, which makes them smaller and faster to decode on the PSP.
-
-```sh
-swiftc -O -o pdf2psp tools/pdf2psp.swift
-./pdf2psp "input.pdf" "output.pdf" 800 0.6   # page width in px, JPEG quality
-```
-
-800 px wide at quality 0.6 kept screentones and lettering clean in testing
-(about 225 KB per manga page).
-
-### `sfo_memsize.py`: give an existing EBOOT the extra memory
-
-Adds `MEMSIZE=1` (and optionally a new title) to an `EBOOT.PBP` without
-recompiling it. The program data is copied unchanged.
-
-```sh
-python3 tools/sfo_memsize.py EBOOT.PBP EBOOT_new.PBP "My App 64MB"
-```
-
-This only helps if the program sizes its heap from available memory, as
-Bookr does with `PSP_HEAP_SIZE_KB(-7*1024)`.
 
 ## Known limitations and ideas
 
