@@ -17,9 +17,9 @@ readme is kept in [README.original.md](README.original.md).
 
 ## Installing on a PSP
 
-1. Unzip the bookr+.zip found in the release tab.
+1. Unzip the **Bookr+.zip** found in the release tab.
 
-2. Place the bookr folder in /PSP/GAME/
+2. Place the **Bookr** folder in **/PSP/GAME/**
 
 3. Put your books anywhere on the Memory Stick & Profit!
 
