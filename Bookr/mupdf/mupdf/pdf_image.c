@@ -240,6 +240,156 @@ static int bk_pdf_fitsinmemory(int bytes)
 	free(p);
 	return 1;
 }
+/*
+ * Bookr+: images bigger than this are shrunk while they load. Drawing an
+ * image needs a full-size pixmap of it, so a 1700x2350 comic page would
+ * need some 50 MB. Images always fill a unit square on the page, so a
+ * smaller copy covers exactly the same area.
+ */
+static const int image_max_pixels = 2*1024*1024;
+
+/* DCT scale picked up by fz_newdctd, see filt_dctd.c */
+extern int fz_dctdscaledenom;
+
+/* 1 to load the image as is, otherwise the power of two to shrink it by:
+ * enough to stay under image_max_pixels and to fit in free memory */
+static int bk_pdf_shrinkfactor(int w, int h, int c)
+{
+	int f = 1;
+	if (w <= 0 || h <= 0 || c <= 0)
+		return 1;
+	while ((w / f) * (h / f) > image_max_pixels)
+		f *= 2;
+	while (f < 64 && !bk_pdf_fitsinmemory(((w + f - 1) / f) * ((h + f - 1) / f) * c))
+		f *= 2;
+	return f;
+}
+
+/* whether the stream's last filter is DCTDecode, so libjpeg can scale it */
+static int bk_pdf_isdct(fz_obj *dict)
+{
+	fz_obj *f = fz_dictgets(dict, "Filter");
+	if (fz_isarray(f) && fz_arraylen(f) > 0)
+		f = fz_arrayget(f, fz_arraylen(f) - 1);
+	return fz_isname(f) && (!strcmp(fz_toname(f), "DCTDecode") || !strcmp(fz_toname(f), "DCT"));
+}
+
+/* sample i of a packed row, as 0-255 (or the raw index for indexed images) */
+static inline int bk_pdf_sample(unsigned char *row, int i, int bpc, int indexed)
+{
+	int v;
+	if (bpc == 8)
+		return row[i];
+	if (bpc == 16)
+		return row[i * 2];
+	v = (row[(i * bpc) >> 3] >> (8 - bpc - ((i * bpc) & 7))) & ((1 << bpc) - 1);
+	return indexed ? v : v * 255 / ((1 << bpc) - 1);
+}
+
+/*
+ * Reads the image a row at a time and averages f x f blocks into an 8 bit
+ * image, so the full-size samples are never held in memory. JPEGs are first
+ * decoded at up to 1/8 size by libjpeg. Indexed images take the top left
+ * sample of each block, since averaging palette indices makes no sense.
+ * On return *wp and *hp hold the new size.
+ */
+static fz_error *
+bk_pdf_loadshrunk(fz_buffer **bufp, pdf_xref *xref, fz_obj *dict, fz_obj *ref,
+	int *wp, int *hp, int c, int bpc, int indexed, int f)
+{
+	fz_error *error;
+	fz_stream *stm;
+	fz_buffer *out;
+	unsigned char *row;
+	unsigned char *d;
+	int *acc = nil;
+	int k = 1;
+	int sw, sh, r, ow, oh, srcstride;
+	int x, y, i, n;
+
+	*bufp = nil;
+	if (bpc == 8 && bk_pdf_isdct(dict))
+		k = f < 8 ? f : 8;
+	sw = (*wp + k - 1) / k;
+	sh = (*hp + k - 1) / k;
+	r = f / k;
+	ow = (sw + r - 1) / r;
+	oh = (sh + r - 1) / r;
+	srcstride = (sw * c * bpc + 7) / 8;
+
+	row = fz_malloc(srcstride);
+	if (!row)
+		return fz_outofmem;
+	if (!indexed) {
+		acc = fz_malloc(ow * c * sizeof(int));
+		if (!acc) {
+			fz_free(row);
+			return fz_outofmem;
+		}
+		memset(acc, 0, ow * c * sizeof(int));
+	}
+	error = fz_newbuffer(&out, ow * oh * c);
+	if (error) {
+		fz_free(row);
+		if (acc)
+			fz_free(acc);
+		return error;
+	}
+
+	fz_dctdscaledenom = k;
+	error = pdf_openstream(&stm, xref, fz_tonum(ref), fz_togen(ref));
+	fz_dctdscaledenom = 1;
+	if (error) {
+		fz_free(row);
+		if (acc)
+			fz_free(acc);
+		fz_dropbuffer(out);
+		return error;
+	}
+
+	d = out->bp;
+	for (y = 0; y < sh; y++) {
+		n = fz_read(stm, row, srcstride);
+		if (n < srcstride) {
+			error = n < 0 ? fz_ioerror(stm) : fz_throw("syntaxerror: truncated image data");
+			break;
+		}
+		if (indexed) {
+			if (y % r == 0)
+				for (x = 0; x < ow; x++)
+					*d++ = bk_pdf_sample(row, x * r, bpc, 1);
+			continue;
+		}
+		for (x = 0; x < sw; x++)
+			for (i = 0; i < c; i++)
+				acc[(x / r) * c + i] += bk_pdf_sample(row, x * c + i, bpc, 0);
+		if ((y + 1) % r == 0 || y == sh - 1) {
+			int rows = y % r + 1;
+			for (x = 0; x < ow; x++) {
+				int cols = sw - x * r < r ? sw - x * r : r;
+				for (i = 0; i < c; i++) {
+					*d++ = acc[x * c + i] / (rows * cols);
+					acc[x * c + i] = 0;
+				}
+			}
+		}
+	}
+
+	fz_dropstream(stm);
+	fz_free(row);
+	if (acc)
+		fz_free(acc);
+	if (error) {
+		fz_dropbuffer(out);
+		return error;
+	}
+	out->wp = d;
+	*bufp = out;
+	*wp = ow;
+	*hp = oh;
+	return nil;
+}
+
 void bk_pdf_resetbufferssize() {
 	image_buffers_size = 0;
 	images_skipped = 0;
@@ -433,7 +583,27 @@ pdf_loadimage(pdf_image **imgp, pdf_xref *xref, fz_obj *dict, fz_obj *ref)
 	// ccm
 	// do not load images that would not fit in memory
 	int early_reject = 0;
-	if (bk_pdf_fitsinmemory(h * stride)) {
+	int shrink = bk_pdf_shrinkfactor(w, h, indexed ? 1 : n + a);
+	if (shrink >= 64) {
+		early_reject = 1;
+		img->samples = nil;
+	} else if (shrink > 1) {
+		error = bk_pdf_loadshrunk(&img->samples, xref, dict, ref, &w, &h,
+			indexed ? 1 : n + a, bpc, indexed != nil, shrink);
+		if (error)
+		{
+			fz_free(img);
+			return error;
+		}
+		bpc = 8;
+		stride = indexed ? w : w * (n + a);
+		if (ismask)
+		{
+			unsigned char *p;
+			for (p = img->samples->bp; p < img->samples->wp; p++)
+				*p = ~*p;
+		}
+	} else if (bk_pdf_fitsinmemory(h * stride)) {
 		error = pdf_loadstream(&img->samples, xref, fz_tonum(ref), fz_togen(ref));
 		if (error)
 		{

@@ -80,6 +80,18 @@ it about 45 MB instead of about 17 MB, which helps with large and image-heavy
 PDFs. It is named **Bookr+** on the XMB so it can sit next to an original
 Bookr.
 
+### Large page images
+
+Comic PDFs often store each page as one big picture. A 1699 × 2353 colour
+page needed about 50 MB to draw, so Bookr showed "not enough memory".
+
+- Images over 2 megapixels, or too big for free memory, are now shrunk while
+  they load: JPEGs are decoded at ½, ¼ or ⅛ size, and other images are
+  averaged a few rows at a time. That page becomes 850 × 1177, still nearly
+  twice the screen's width. Smaller images load as before.
+- Such pages are also very large in PDF units, so the lowest zoom went from
+  0.25x to 0.05x. Fit height and Comic mode now show the whole page.
+
 ### UTF-8 text files with accents
 
 Bookr's text font holds 256 glyphs addressed by byte value, so `.txt` files

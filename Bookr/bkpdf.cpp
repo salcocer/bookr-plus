@@ -920,9 +920,14 @@ int BKPDF::getCurrentZoomLevel() {
 	return ctx->zoomLevel;
 }
 
+// Lowest zoom for fit, fine zoom and trim. It is below the first zoom
+// level so pages that are large in PDF units, like scanned comics stored at
+// 72 dpi, can still fit the whole page on screen.
+static const float minZoom = 0.05f;
+
 // Fast images keeps a full page in memory, so it is limited to 2x.
 static float clampZoom(float z) {
-	float lo = zoomLevels[0];
+	float lo = minZoom;
 	float hi = BKUser::options.pdfFastScroll ? 2.0f : zoomLevels[sizeof(zoomLevels)/sizeof(float) - 1];
 	if (z < lo)
 		return lo;
@@ -977,11 +982,18 @@ int BKPDF::applyZoom(float z) {
 int BKPDF::setZoomLevel(int z) {
 	if (z == ctx->zoomLevel)
 		return 0;
+	bool zoomOut = z < ctx->zoomLevel;
 	int n = sizeof(zoomLevels)/sizeof(float);
 	if (z < 0)
 		z = 0;
 	if (z >= n)
 		z = n - 1;
+	// below the first level (after fit or fine zoom) a step out would jump
+	// back in to it, and a step in goes to the first level
+	if (zoomOut && zoomLevels[z] >= ctx->zoom)
+		return 0;
+	if (!zoomOut && ctx->zoom < zoomLevels[0])
+		z = 0;
 	return applyZoom(zoomLevels[z]);
 }
 

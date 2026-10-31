@@ -20,7 +20,13 @@ struct fz_dctd_s
 	struct myerrmgr err;
 	int colortransform;
 	int stage;
+	int scaledenom;
 };
+
+/* Bookr+: when set above 1 before a DCT filter is created, the filter
+ * decodes the JPEG at 1/scale size (2, 4 or 8), which is how big images
+ * are shrunk while they load */
+int fz_dctdscaledenom = 1;
 
 static void myinitsource(j_decompress_ptr cinfo) { /* empty */ }
 static boolean myfillinput(j_decompress_ptr cinfo) { return FALSE; }
@@ -66,6 +72,7 @@ fz_newdctd(fz_filter **fp, fz_obj *params)
 
 	d->colortransform = colortransform;
 	d->stage = 0;
+	d->scaledenom = fz_dctdscaledenom;
 
 	/* setup error callback first thing */
 	myiniterr(&d->err);
@@ -165,6 +172,11 @@ fz_processdctd(fz_filter *filter, fz_buffer *in, fz_buffer *out)
 							d->cinfo.jpeg_color_space = JCS_CMYK;
 						break;
 				}
+			}
+
+			if (d->scaledenom > 1) {
+				d->cinfo.scale_num = 1;
+				d->cinfo.scale_denom = d->scaledenom;
 			}
 
 			/* fall through */
