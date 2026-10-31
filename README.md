@@ -23,22 +23,50 @@ readme is kept in [README.original.md](README.original.md).
 
 3. Put your books anywhere on the Memory Stick & Profit!
 
+<img width="315" height="342" alt="Screenshot 2026-10-31 at 13 53 06" src="https://github.com/user-attachments/assets/8a0fb465-191b-4e56-a25f-371f0547c48f" />
 
 
 ## Screenshots
 <table>
   <tr>
-    <td width="50%"><img width="100%" alt="img_0" src="https://github.com/user-attachments/assets/f847788e-a212-4333-8071-fae3c121cbd3" /></td>
-    <td width="50%"><img width="100%" alt="img_1" src="https://github.com/user-attachments/assets/ae99ade8-2e86-433f-896f-8dd66215c6cc" /></td>
+<img width="4032" height="3024" alt="bookr_1" src="https://github.com/user-attachments/assets/768be12a-8193-41d1-8156-8575ea7b44f9" />
+<img width="4032" height="3024" alt="bookr_2" src="https://github.com/user-attachments/assets/ac20063f-3a07-4965-90aa-488b305d8432" />
+
   </tr>
   <tr>
-    <td width="50%"><img width="100%" alt="img_2" src="https://github.com/user-attachments/assets/76026db3-d541-47ba-8741-447cd19ee2d1" /></td>
-    <td width="50%"><img width="100%" alt="img_3" src="https://github.com/user-attachments/assets/7eb9be7e-9182-45b4-8b14-da74c0a96d17" /></td>
+<img width="4032" height="3024" alt="bookr_3" src="https://github.com/user-attachments/assets/1cab7534-661c-4e6b-a26b-038c9d6ee77d" />
+<img width="4032" height="3024" alt="bookr_4" src="https://github.com/user-attachments/assets/95b7f6e4-7cf4-4fe9-9fcb-47227fb7f410" />
+
   </tr>
   <tr>
-    <td width="50%"><img width="100%" alt="img_4" src="https://github.com/user-attachments/assets/f2b8f6e2-dcfd-4b2e-8715-b85006fb2137" /></td>
-    <td width="50%"><img width="100%" alt="img_5" src="https://github.com/user-attachments/assets/3dd3e2a9-2706-436e-b0a6-2c1cd17908a7" /></td>
+<img width="4032" height="3024" alt="bookr_6" src="https://github.com/user-attachments/assets/948acc59-f59d-4a3c-8fb5-fe372f2d0bb1" />
+<img width="4032" height="3024" alt="bookr_5" src="https://github.com/user-attachments/assets/ec2c6133-9d43-4bf0-ac89-5058a4b667fd" />
+
   </tr>
+
+  <tr>
+    <img width="4032" height="3024" alt="bookr_7" src="https://github.com/user-attachments/assets/ed7f774c-a348-44c4-9da9-a401f2aba2cd" />
+<img width="4032" height="3024" alt="bookr_8" src="https://github.com/user-attachments/assets/965b557f-4c26-4a96-a603-b11ad9a7a2b1" />
+
+  </tr>
+
+  <tr>
+    <img width="4032" height="3024" alt="bookr_9" src="https://github.com/user-attachments/assets/4f977b8e-404e-4b1c-a972-30eb37d6bf77" />
+<img width="4032" height="3024" alt="bookr_10" src="https://github.com/user-attachments/assets/71e50eb9-2d17-4d72-be18-d704b5d43f7d" />
+
+  </tr>
+
+<tr>
+  <img width="4032" height="3024" alt="bookr_11" src="https://github.com/user-attachments/assets/71aa0a2a-f983-4d25-ab59-3b36343100f0" />
+<img width="4032" height="3024" alt="bookr_12" src="https://github.com/user-attachments/assets/ec770816-7b28-4d25-a75b-183dcf450588" />
+
+</tr>
+
+<tr>
+  <img width="4032" height="3024" alt="bookr_13" src="https://github.com/user-attachments/assets/6db658e7-fd7d-4450-9ef2-40611f6b58a4" />
+
+</tr>
+  
 </table>
 
 
