@@ -7,7 +7,7 @@ comics, a right-to-left comic mode, EPUB books, UTF-8 text files, zoom for
 text files, screenshots saved to the Memory Stick, a neobrutalist interface,
 and use of the PSP-2000/3000's extra memory.
 
-It has been tested on a **PSP-3000 running ARK-4 custom firmware**.
+It has been tested on a **PSP-200 and PSP-3000 running ARK-4 custom firmware**.
 
 Bookr+ reads plain text, PDF, EPUB, CHM, HTML, DjVu and
 PalmDoc/Mobipocket (EPUB and Mobipocket without DRM). The original V8.1
